@@ -36,6 +36,68 @@ from .interface import LLMProvider, parse_json
 
 TASK_MARKER = "REVIEWER2_TASK:"
 
+#: The engine has fixed strings rather than a model, so it carries its own
+#: translations; the prompt states which language the analysis must use.
+PHRASES: Dict[str, Dict[str, str]] = {
+    "pt": {
+        "no_evidence": "Não foi possível determinar com as evidências disponíveis: "
+        "nenhum trecho recuperado trata diretamente desta afirmação.",
+        "no_evidence_conclusion": "Sem evidência suficiente nas fontes fornecidas.",
+        "universal_analysis": "A afirmação usa uma formulação universal ({markers}), "
+        "enquanto a fonte apresenta condições ou limitações para o mesmo fenômeno.",
+        "universal_problem": "Generalização indevida: a evidência não sustenta uma afirmação universal.",
+        "universal_fix": "Reformular a afirmação indicando as condições em que ela vale.",
+        "universal_conclusion": "Fundamento correto, formulação universal não sustentada.",
+        "causal_analysis": "A afirmação apresenta uma relação causal; a fonte descreve a relação "
+        "sob condições específicas, sem demonstrar causalidade geral.",
+        "causal_problem": "Causalidade não demonstrada pela evidência disponível.",
+        "causal_fix": "Descrever a relação como associação observada sob determinadas condições.",
+        "causal_conclusion": "A direção da afirmação é plausível, mas a causalidade não está demonstrada.",
+        "correct_analysis": "O trecho recuperado é consistente com a afirmação.",
+        "correct_conclusion": "Afirmação consistente com a evidência recuperada.",
+        "omission_explanation": "A fonte condiciona a afirmação; o vídeo apresenta-a sem a condição.",
+        "no_conflict": "Não foi identificado conflito direto entre as afirmações.",
+        "conflict": "As afirmações compartilham o mesmo objeto e têm polaridade oposta.",
+        "dv_nothing": "Ausência de evidência declarada explicitamente; nada a rebater.",
+        "dv_ungrounded": "A citação apresentada não foi localizada nas fontes fornecidas.",
+        "dv_assumption": "A crítica dependia de uma citação não verificável.",
+        "dv_alternative": "A afirmação poderia ser válida em um contexto mais restrito.",
+        "dv_transcript": "A transcrição reflete corretamente a fala.",
+        "dv_kept": "Crítica mantida com evidência verificada.",
+    },
+    "en": {
+        "no_evidence": "Could not be determined with the available evidence: no retrieved "
+        "excerpt addresses this claim directly.",
+        "no_evidence_conclusion": "Not enough evidence in the provided sources.",
+        "universal_analysis": "The claim is phrased universally ({markers}), while the source "
+        "states conditions or limits for the same phenomenon.",
+        "universal_problem": "Undue generalisation: the evidence does not support a universal claim.",
+        "universal_fix": "Reword the claim stating the conditions under which it holds.",
+        "universal_conclusion": "Sound in substance, but the universal phrasing is unsupported.",
+        "causal_analysis": "The claim asserts a causal relation; the source describes it under "
+        "specific conditions, without demonstrating general causality.",
+        "causal_problem": "Causality not demonstrated by the available evidence.",
+        "causal_fix": "Describe the relation as an association observed under certain conditions.",
+        "causal_conclusion": "The direction is plausible, but causality is not demonstrated.",
+        "correct_analysis": "The retrieved excerpt is consistent with the claim.",
+        "correct_conclusion": "Claim consistent with the retrieved evidence.",
+        "omission_explanation": "The source conditions the claim; the video states it without the condition.",
+        "no_conflict": "No direct conflict was found between the claims.",
+        "conflict": "The claims share the same subject and have opposite polarity.",
+        "dv_nothing": "Absence of evidence stated explicitly; nothing to challenge.",
+        "dv_ungrounded": "The quote presented was not found in the provided sources.",
+        "dv_assumption": "The critique relied on an unverifiable quote.",
+        "dv_alternative": "The claim could hold in a narrower context.",
+        "dv_transcript": "The transcript reflects the speech correctly.",
+        "dv_kept": "Critique kept, with verified evidence.",
+    },
+}
+
+
+def _phrases(prompt: str) -> Dict[str, str]:
+    """Pick the language the prompt asked the analysis to be written in."""
+    return PHRASES["en"] if "in English" in prompt else PHRASES["pt"]
+
 
 class HeuristicProvider(LLMProvider):
     """Deterministic, model-free implementation of the LLM contracts."""
@@ -58,6 +120,7 @@ class HeuristicProvider(LLMProvider):
         stop: Optional[List[str]] = None,
     ) -> str:
         task, payload = _read_task(prompt)
+        payload["_lang"] = _phrases(prompt)
         handler = {
             "claim_extraction": self._claims,
             "claim_critique": self._critique,
@@ -100,6 +163,7 @@ class HeuristicProvider(LLMProvider):
 
     def _critique(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Compare one claim with the retrieved excerpts, citing sentences by id."""
+        t = payload["_lang"]
         claim = str(payload.get("claim", ""))
         universal = find_markers(claim, UNIVERSAL_MARKERS)
         causal = find_markers(claim, CAUSAL_MARKERS)
@@ -121,11 +185,10 @@ class HeuristicProvider(LLMProvider):
                 "statement_type": "INFERENCIA",
                 "compatibility": "INDETERMINADO",
                 "evidence": [],
-                "analysis": "Não foi possível determinar com as evidências disponíveis: "
-                "nenhum trecho recuperado trata diretamente desta afirmação.",
+                "analysis": t["no_evidence"],
                 "problem": "",
                 "suggested_correction": "",
-                "conclusion": "Sem evidência suficiente nas fontes fornecidas.",
+                "conclusion": t["no_evidence_conclusion"],
                 "omissions": [],
             }
 
@@ -137,7 +200,7 @@ class HeuristicProvider(LLMProvider):
                 {
                     "id": best_id,
                     "impact": "MEDIA",
-                    "explanation": "A fonte condiciona a afirmação; o vídeo apresenta-a sem a condição.",
+                    "explanation": t["omission_explanation"],
                 }
             ]
         )
@@ -152,12 +215,11 @@ class HeuristicProvider(LLMProvider):
                 "compatibility": "PARCIAL",
                 "evidence": [{"id": best_id, "relation": "PARTIAL"}],
                 "analysis": (
-                    f"A afirmação usa uma formulação universal ({', '.join(universal)}), "
-                    "enquanto a fonte apresenta condições ou limitações para o mesmo fenômeno."
+                    t["universal_analysis"].format(markers=", ".join(universal))
                 ),
-                "problem": "Generalização indevida: a evidência não sustenta uma afirmação universal.",
-                "suggested_correction": "Reformular a afirmação indicando as condições em que ela vale.",
-                "conclusion": "Fundamento correto, formulação universal não sustentada.",
+                "problem": t["universal_problem"],
+                "suggested_correction": t["universal_fix"],
+                "conclusion": t["universal_conclusion"],
                 "omissions": omissions,
             }
 
@@ -170,11 +232,10 @@ class HeuristicProvider(LLMProvider):
                 "statement_type": "INFERENCIA",
                 "compatibility": "PARCIAL",
                 "evidence": [{"id": best_id, "relation": "PARTIAL"}],
-                "analysis": "A afirmação apresenta uma relação causal; a fonte descreve a relação "
-                "sob condições específicas, sem demonstrar causalidade geral.",
-                "problem": "Causalidade não demonstrada pela evidência disponível.",
-                "suggested_correction": "Descrever a relação como associação observada sob determinadas condições.",
-                "conclusion": "A direção da afirmação é plausível, mas a causalidade não está demonstrada.",
+                "analysis": t["causal_analysis"],
+                "problem": t["causal_problem"],
+                "suggested_correction": t["causal_fix"],
+                "conclusion": t["causal_conclusion"],
                 "omissions": omissions,
             }
 
@@ -186,15 +247,16 @@ class HeuristicProvider(LLMProvider):
             "statement_type": "FATO",
             "compatibility": "SIM",
             "evidence": [{"id": best_id, "relation": "SUPPORTS"}],
-            "analysis": "O trecho recuperado é consistente com a afirmação.",
+            "analysis": t["correct_analysis"],
             "problem": "",
             "suggested_correction": "",
-            "conclusion": "Afirmação consistente com a evidência recuperada.",
+            "conclusion": t["correct_conclusion"],
             "omissions": omissions,
         }
 
     def _contradiction(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Check whether two claims of the same video conflict."""
+        t = payload["_lang"]
         a = str(payload.get("claim_a", ""))
         b = str(payload.get("claim_b", ""))
         negations = ("nao", "not", "never", "nunca", "sem ")
@@ -205,9 +267,7 @@ class HeuristicProvider(LLMProvider):
         return {
             "is_contradiction": bool(opposed),
             "explanation": (
-                "As afirmações compartilham o mesmo objeto e têm polaridade oposta."
-                if opposed
-                else "Não foi identificado conflito direto entre as afirmações."
+                t["conflict"] if opposed else t["no_conflict"]
             ),
             "same_sense_of_terms": True,
             "context_difference": "",
@@ -219,6 +279,7 @@ class HeuristicProvider(LLMProvider):
 
     def _devil_advocate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Keep a critique only when its quote really comes from the source."""
+        t = payload["_lang"]
         quotes: Iterable[str] = payload.get("evidence_quotes") or []
         sources = " ".join(str(t) for t in (payload.get("source_texts") or []))
         classification = str(payload.get("classification", ""))
@@ -232,26 +293,26 @@ class HeuristicProvider(LLMProvider):
         if classification.upper().startswith("NAO_SUSTENTADA"):
             return {
                 "sustained": True,
-                "notes": "Ausência de evidência declarada explicitamente; nada a rebater.",
+                "notes": t["dv_nothing"],
                 "confidence_adjustment": 0.0,
                 "assumptions": [],
             }
         if not grounded:
             return {
                 "sustained": False,
-                "notes": "A citação apresentada não foi localizada nas fontes fornecidas.",
+                "notes": t["dv_ungrounded"],
                 "confidence_adjustment": -0.3,
-                "assumptions": ["A crítica dependia de uma citação não verificável."],
+                "assumptions": [t["dv_assumption"]],
             }
         return {
             "sustained": True,
-            "alternative_interpretation": "A afirmação poderia ser válida em um contexto mais restrito.",
-            "assumptions": ["A transcrição reflete corretamente a fala."],
+            "alternative_interpretation": t["dv_alternative"],
+            "assumptions": [t["dv_transcript"]],
             "context_considered": True,
             "source_supports_critique": True,
             "transcription_risk": "",
             "conflicting_sources": "",
-            "notes": "Crítica mantida com evidência verificada.",
+            "notes": t["dv_kept"],
             "confidence_adjustment": 0.0,
         }
 
