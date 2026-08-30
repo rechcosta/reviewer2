@@ -252,3 +252,36 @@ def test_defects_exclude_undetermined_claims() -> None:
     assert len(report.defects) == 1           # but only one is an actual error
     assert len(report.undetermined) == 1
     assert report.defects[0].claim.claim_id == "claim_001"
+
+
+def test_readmes_document_the_verdict_tokens_the_code_emits() -> None:
+    """Regression: the English README listed the Portuguese verdict tokens.
+
+    The verdict names are part of the documented contract, so a rename in
+    the code must not leave the READMEs promising something else.
+    """
+    from pathlib import Path as _Path
+
+    from app.models import QualityVerdict
+
+    english = _Path("README.md").read_text(encoding="utf-8")
+    portuguese = _Path("README.pt-BR.md").read_text(encoding="utf-8")
+
+    for verdict in QualityVerdict:
+        en_token = verdict.label(strings("en"))
+        pt_token = verdict.label(strings("pt"))
+        assert f"`{en_token}`" in english, f"README.md não documenta {en_token}"
+        assert f"`{pt_token}`" in portuguese, f"README.pt-BR.md não documenta {pt_token}"
+
+
+def test_english_readme_example_uses_english_field_labels() -> None:
+    """The sample report in README.md must match what the generator writes."""
+    from pathlib import Path as _Path
+
+    english = _Path("README.md").read_text(encoding="utf-8")
+    sample = english.split("```markdown", 1)[1].split("```", 1)[0]
+
+    for label in ("**Claim:**", "**Classification:**", "**Severity:**", "**Confidence:**"):
+        assert label in sample, f"faltou {label} no exemplo do README inglês"
+    for portuguese_label in ("**Afirmação:**", "**Classificação:**", "**Gravidade:**"):
+        assert portuguese_label not in sample, f"rótulo em português no exemplo inglês: {portuguese_label}"

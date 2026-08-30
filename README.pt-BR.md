@@ -72,6 +72,9 @@ O relatório abre com um veredito acionável:
 | 🟠 `PRECISA_CORRECAO` | há afirmações que podem gerar compreensão incorreta |
 | 🔴 `REGRAVAR_TRECHO` | há erro que compromete a explicação |
 
+*(Um relatório em inglês imprime `READY_TO_PUBLISH`, `MINOR_FIXES`, `NEEDS_CORRECTION`,
+`RERECORD_SEGMENT`.)*
+
 ### O que ele identifica
 
 | | |

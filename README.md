@@ -67,10 +67,13 @@ The report opens with an actionable verdict:
 
 | Verdict | Meaning |
 |---|---|
-| ✅ `PODE_PUBLICAR` | no technical error supported by evidence |
-| 🟡 `AJUSTES_MENORES` | no serious errors; consider rewording or noting them |
-| 🟠 `PRECISA_CORRECAO` | claims that could cause incorrect understanding |
-| 🔴 `REGRAVAR_TRECHO` | an error that compromises the explanation |
+| ✅ `READY_TO_PUBLISH` | no technical error supported by evidence |
+| 🟡 `MINOR_FIXES` | no serious errors; consider rewording or noting them |
+| 🟠 `NEEDS_CORRECTION` | claims that could cause incorrect understanding |
+| 🔴 `RERECORD_SEGMENT` | an error that compromises the explanation |
+
+*(A Portuguese report prints `PODE_PUBLICAR`, `AJUSTES_MENORES`, `PRECISA_CORRECAO`,
+`REGRAVAR_TRECHO`.)*
 
 ### What it detects
 
@@ -269,20 +272,39 @@ reasoning**.
 
 **Timestamp:** 00:00:26
 
-**Afirmação:**
-> "A memória cache é uma memória não volátil que fica dentro do processador."
+**Claim:**
+> A memória cache é uma memória não volátil que fica dentro do processador.
 
-**Classificação:** `INCORRETA`   **Gravidade:** `CRITICO`   **Confiança:** `ALTA` (0.78)
+**Classification:**
+`INCORRETA`
 
-**Evidência:**
-Fonte: `arquitetura.pdf` · Página: 12 · Similaridade: 0.81
-> "A memória cache é uma memória volátil construída com células SRAM."
+**Severity:**
+`CRITICO`
 
-**Análise:** the source states the opposite explicitly: cache is volatile.
+**Confidence:**
+`ALTA` (0.78)
 
-**Correção sugerida:**
-> "A memória cache é uma memória volátil que fica dentro do processador."
+**Nature of the assessment:** `FATO` · **Compatibility with the sources:** `NAO` · **Evidence status:** `OK`
+
+**Evidence:**
+
+Source: `arquitetura.pdf` · Page: 12 · Similarity: 0.81
+
+> A memória cache é uma memória volátil construída com células SRAM.
+
+**Analysis:**
+
+The source states the opposite explicitly: cache is volatile.
+
+**Suggested correction:**
+
+> A memória cache é uma memória volátil que fica dentro do processador.
 ```
+
+The claim text and the quotes stay in the video's own language — they are the
+speaker's words and the source's words. Everything Reviewer2 writes follows
+`--report-language`. Classification, severity and confidence keep their canonical
+Portuguese tokens in both languages, so a report is comparable across runs.
 
 ### Useful flags
 
