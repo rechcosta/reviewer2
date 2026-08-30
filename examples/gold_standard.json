@@ -1,0 +1,70 @@
+{
+  "video": "examples/aula_transcricao.json",
+  "references": ["examples/referencia_arquitetura.md"],
+  "claims": [
+    {
+      "text": "Quando aumentamos a frequência do processador, o desempenho sempre aumenta, porque mais instruções podem ser executadas por segundo.",
+      "classification": "PARCIALMENTE_CORRETA",
+      "severity": "MEDIO",
+      "topic": "frequência e desempenho",
+      "timestamp": "00:00:12",
+      "expected_evidence": ["o ganho de desempenho ocorre apenas quando a carga de trabalho é limitada por computação"],
+      "notes": "Generalização indevida: a fonte condiciona o ganho ao tipo de carga."
+    },
+    {
+      "text": "A memória cache é uma memória não volátil que fica dentro do processador.",
+      "classification": "INCORRETA",
+      "severity": "ALTO",
+      "topic": "hierarquia de memória",
+      "timestamp": "00:00:26",
+      "expected_evidence": ["A memória cache é uma memória volátil construída com células SRAM"],
+      "notes": "A fonte afirma explicitamente o contrário."
+    },
+    {
+      "text": "Os dados armazenados na cache são perdidos quando o computador é desligado.",
+      "classification": "CORRETA",
+      "topic": "hierarquia de memória",
+      "timestamp": "00:00:40",
+      "expected_evidence": ["O conteúdo da cache é perdido quando a alimentação elétrica é removida"],
+      "notes": "Correta, e contradiz a afirmação anterior do próprio vídeo."
+    },
+    {
+      "text": "O pipeline executa cinco instruções simultaneamente e por isso ele garante uma aceleração de cinco vezes.",
+      "classification": "PARCIALMENTE_CORRETA",
+      "severity": "ALTO",
+      "topic": "pipeline",
+      "timestamp": "00:00:54",
+      "expected_evidence": ["A aceleração ideal de cinco vezes só é atingida na ausência de"],
+      "notes": "A aceleração de 5x é ideal, não garantida."
+    },
+    {
+      "text": "A técnica de prefetching reduz a latência de acesso à memória.",
+      "classification": "PARCIALMENTE_CORRETA",
+      "severity": "MEDIO",
+      "topic": "prefetching",
+      "timestamp": "00:01:10",
+      "expected_evidence": ["reduz a latência efetiva de acesso quando as predições estão corretas"],
+      "notes": "Omite o caso das predições incorretas."
+    },
+    {
+      "text": "Os sistemas que usam prefetching têm maior desempenho, portanto o prefetching causa o aumento de desempenho.",
+      "classification": "INCORRETA",
+      "severity": "ALTO",
+      "topic": "prefetching",
+      "timestamp": "00:01:26",
+      "expected_evidence": ["a correlação isoladamente não estabelece causalidade"],
+      "notes": "Correlação apresentada como causalidade."
+    },
+    {
+      "text": "Podemos pensar no cache como uma gaveta perto da mesa de trabalho, é uma simplificação para facilitar o entendimento.",
+      "classification": "SIMPLIFICACAO_PEDAGOGICA",
+      "severity": "PEDAGOGICO",
+      "topic": "analogia",
+      "timestamp": "00:01:41",
+      "notes": "Analogia declarada pelo próprio apresentador; não é erro."
+    }
+  ],
+  "should_not_flag": [
+    "Os dados armazenados na cache são perdidos quando o computador é desligado."
+  ]
+}

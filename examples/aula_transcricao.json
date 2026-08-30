@@ -1,0 +1,16 @@
+{
+  "source": "examples/aula_exemplo.mp4",
+  "language": "pt",
+  "duration": 300.0,
+  "model": "exemplo/transcricao-manual",
+  "segments": [
+    {"segment_id": 0, "start": 0.0, "end": 12.0, "text": "Hoje vamos falar sobre desempenho de processadores e sobre a hierarquia de memória.", "confidence": 0.95, "low_confidence": false},
+    {"segment_id": 1, "start": 12.4, "end": 24.0, "text": "Quando aumentamos a frequência do processador, o desempenho sempre aumenta, porque mais instruções podem ser executadas por segundo.", "confidence": 0.93, "low_confidence": false},
+    {"segment_id": 2, "start": 26.0, "end": 38.0, "text": "A memória cache é uma memória não volátil que fica dentro do processador.", "confidence": 0.9, "low_confidence": false},
+    {"segment_id": 3, "start": 40.0, "end": 52.0, "text": "Os dados armazenados na cache são perdidos quando o computador é desligado.", "confidence": 0.92, "low_confidence": false},
+    {"segment_id": 4, "start": 54.0, "end": 68.0, "text": "O pipeline executa cinco instruções simultaneamente e por isso ele garante uma aceleração de cinco vezes.", "confidence": 0.88, "low_confidence": false},
+    {"segment_id": 5, "start": 70.0, "end": 84.0, "text": "A técnica de prefetching reduz a latência de acesso à memória.", "confidence": 0.94, "low_confidence": false},
+    {"segment_id": 6, "start": 86.0, "end": 99.0, "text": "Os sistemas que usam prefetching têm maior desempenho, portanto o prefetching causa o aumento de desempenho.", "confidence": 0.91, "low_confidence": false},
+    {"segment_id": 7, "start": 101.0, "end": 112.0, "text": "Podemos pensar no cache como uma gaveta perto da mesa de trabalho, é uma simplificação para facilitar o entendimento.", "confidence": 0.9, "low_confidence": false}
+  ]
+}
