@@ -1,0 +1,35 @@
+# ---------------------------------------------------------------------------
+# Reviewer2 — dependencies
+#
+# Everything here is free and runs locally. No paid API is required.
+# ---------------------------------------------------------------------------
+
+# Core (required)
+pydantic>=2.6,<3
+numpy>=1.24
+pyyaml>=6.0
+requests>=2.31
+
+# Transcription (ASR) — also needs the ffmpeg binary on PATH
+faster-whisper>=1.0.0
+
+# Embeddings (local, free)
+sentence-transformers>=2.6.0
+
+# Vector database — FAISS is optional: without it Reviewer2 falls back to a
+# built-in NumPy index, which is fine for one video plus a few documents.
+faiss-cpu>=1.8.0
+
+# Document parsing
+pymupdf>=1.24.0          # PDF (preferred)
+pypdf>=4.0.0             # PDF (fallback)
+python-docx>=1.1.0       # DOCX
+beautifulsoup4>=4.12.0   # HTML / URLs
+
+# Web interface (optional — only needed for `reviewer2-web`)
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+
+# Tests
+pytest>=8.0.0

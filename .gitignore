@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+.eggs/
+
+# Tests / tooling
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+
+# Reviewer2 data — media, transcripts, indexes and reports stay local
+data/videos/*
+data/documents/*
+data/transcripts/*
+data/reports/*
+data/index/*
+data/cache/*
+!data/**/.gitkeep
+.reviewer2_cache/
+*.reviewer2.wav
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

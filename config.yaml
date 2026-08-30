@@ -1,0 +1,93 @@
+# ---------------------------------------------------------------------------
+# Reviewer2 — configuration
+#
+# Precedence: CLI arguments > environment variables > this file > defaults.
+# Environment variables use the REVIEWER2_ prefix and __ for nesting, e.g.
+#   REVIEWER2_LLM__MODEL=llama3.1:8b
+# ---------------------------------------------------------------------------
+
+paths:
+  data_dir: data
+  videos_dir: data/videos
+  documents_dir: data/documents
+  transcripts_dir: data/transcripts
+  reports_dir: data/reports
+  index_dir: data/index
+  cache_dir: data/cache
+
+transcription:
+  backend: faster-whisper
+  model: small              # tiny | base | small | medium | large-v3
+  device: auto              # auto | cpu | cuda
+  compute_type: int8        # int8 (CPU) | float16 (GPU)
+  language: null            # null = auto-detect; "pt" / "en" to force
+  beam_size: 5
+  vad_filter: true
+  word_timestamps: true
+  low_confidence_threshold: 0.6
+  reuse_existing: true      # reuse a transcript already in data/transcripts/
+
+documents:
+  chunk_size: 900
+  chunk_overlap: 150
+  min_chunk_size: 120
+  pdf_backend: auto         # auto | pymupdf | pypdf
+  request_timeout: 30
+  download_dir: data/cache  # where PDFs fetched from URLs are stored
+
+embeddings:
+  backend: auto             # auto | sentence-transformers | hashing
+  model: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+  device: cpu
+  batch_size: 32
+  hashing_dimension: 512
+
+retrieval:
+  backend: auto             # auto | faiss | numpy
+  top_k: 6                  # chunks retrieved per claim
+  min_score: 0.25           # below this, a claim is declared NAO_SUSTENTADA
+  max_evidence_per_claim: 4
+  lexical_boost: 0.15       # small keyword bonus on top of the vector score
+  persist: true
+
+llm:
+  provider: ollama          # ollama | llamacpp | openai-compatible | heuristic
+  model: qwen2.5:7b-instruct
+  base_url: http://localhost:11434
+  temperature: 0.1          # low: this is an audit, not creative writing
+  top_p: 0.9
+  max_tokens: 3072          # headroom: a full critique uses ~1000 tokens
+  num_ctx: 8192             # context window; the main RAM driver after the model
+  timeout: 600              # CPU inference can take minutes per call
+  max_retries: 2
+  concurrency: 2            # simultaneous model calls; 2 measured ~2.7x throughput on CPU
+  cache: true               # reuse identical model calls: a re-run costs almost nothing
+  fallback_to_heuristic: false   # true = degrade to the offline engine instead of failing
+
+analysis:
+  window_max_seconds: 45.0
+  window_max_chars: 1200
+  window_pause_seconds: 1.4
+  max_claims_per_window: 6
+  min_claim_chars: 15
+  detect_omissions: true
+  detect_internal_contradictions: true
+  contradiction_similarity_threshold: 0.45
+  contradiction_similarity_threshold_lexical: 0.28
+  max_contradiction_pairs: 10   # each pair costs one model call
+  language: pt              # language of the prompts
+
+verification:
+  enabled: true             # the devil's advocate pass
+  drop_unsustained: true    # precision over quantity
+  max_confidence_drop: 0.35
+  skip_correct_claims: true
+
+report:
+  language: pt              # pt | en
+  include_correct_claims: true
+  include_audit_json: true
+  max_evidence_quote_chars: 700
+  filename_suffix: _review
+
+log_level: INFO

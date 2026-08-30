@@ -1,0 +1,7 @@
+# Minimal install: enough to run the whole pipeline offline with
+# `--offline` (heuristic engine + hashing embeddings + NumPy index),
+# and with a local LLM through Ollama.
+pydantic>=2.6,<3
+numpy>=1.24
+pyyaml>=6.0
+requests>=2.31
