@@ -266,3 +266,71 @@ def test_console_summary_matches_the_report(
     if "undetermined" in console:
         undetermined = int(re.search(r"undetermined\s+:\s+(\d+)", console).group(1))
         assert f"não verificáveis com estas fontes: **{undetermined}**" in markdown
+
+
+#: Tokens that stay Portuguese by design: the canonical vocabulary of the
+#: specification, documented in both READMEs.
+CANONICAL_TOKENS = {
+    "CORRETA", "INCORRETA", "PARCIALMENTE_CORRETA", "IMPRECISA", "CONTRADITORIA",
+    "NAO_SUSTENTADA", "SIMPLIFICACAO_PEDAGOGICA", "CRITICO", "ALTO", "MEDIO", "BAIXO",
+    "PEDAGOGICO", "MUITO_ALTA", "ALTA", "MEDIA", "BAIXA", "FATO", "INFERENCIA",
+    "INTERPRETACAO", "OPINIAO", "SIM", "NAO", "PARCIAL", "INDETERMINADO",
+}
+
+#: Words that only appear in Portuguese prose written by the code itself.
+PORTUGUESE_PROSE = (
+    "Não foi possível", "Nenhum item", "Sem evidência", "A crítica", "Crítica mantida",
+    "A afirmação", "A análise", "A transcrição", "Ausência de", "Há erro", "Há afirmações",
+    "Sem erros graves", "Pode publicar", "não puderam", "verificáveis com estas fontes",
+    "A fonte condiciona", "Generalização indevida", "Reformular a afirmação",
+)
+
+
+def test_english_report_leaks_no_portuguese_prose(
+    config: Config, transcript_file: Path, reference_file: Path, tmp_path: Path
+) -> None:
+    """Every sentence the code writes must follow --report-language.
+
+    Regression for a whole class of defect: the verdict, its advice, the
+    limitations, the verification notes and the critique engine's own
+    sentences were each hardcoded in Portuguese at some point, so an English
+    report came out half translated.
+
+    Claim text and source quotes are excluded: those are the user's own
+    Portuguese content, not strings written by Reviewer2.
+    """
+    config.report.language = "en"
+    config.analysis.language = "en"
+    report = build_pipeline(config, offline=True).run(
+        "aula.mp4", [str(reference_file)], transcript_path=transcript_file, output=tmp_path / "en.md"
+    )
+    assert report.critiques, "the run must produce critiques for this to prove anything"
+
+    markdown = (tmp_path / "en.md").read_text(encoding="utf-8")
+    offenders = []
+    for line in markdown.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(">") or stripped.startswith("###"):
+            continue  # quotes and claim headings carry the video's own language
+        if any(token in stripped for token in CANONICAL_TOKENS):
+            continue
+        for phrase in PORTUGUESE_PROSE:
+            if phrase in stripped:
+                offenders.append(stripped[:100])
+                break
+    assert not offenders, "Portuguese prose in an English report:\n  " + "\n  ".join(offenders)
+
+
+def test_portuguese_report_stays_portuguese(
+    config: Config, transcript_file: Path, reference_file: Path, tmp_path: Path
+) -> None:
+    """The opposite direction: the default must not drift into English."""
+    report = build_pipeline(config, offline=True).run(
+        "aula.mp4", [str(reference_file)], transcript_path=transcript_file, output=tmp_path / "pt.md"
+    )
+    markdown = (tmp_path / "pt.md").read_text(encoding="utf-8")
+    assert "## 1. Resumo Executivo" in markdown
+    assert "## 13. Limitações da Análise" in markdown
+    for english in ("Executive Summary", "Ready to publish", "Could not be determined"):
+        assert english not in markdown
+    assert report.quality.value.isupper()

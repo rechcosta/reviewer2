@@ -106,6 +106,18 @@ PT: Dict[str, str] = {
     "dv_no_evidence": "Ausência de evidência declarada explicitamente; nada a rebater.",
     "dv_failed": "A verificação automática falhou; a confiança foi reduzida por precaução.",
     "dv_unsustained": "A crítica não se sustentou na revisão do advogado do diabo.",
+    # Sentences written by the critique engine itself.
+    "cr_undetermined": "Não foi possível determinar com as evidências disponíveis.",
+    "cr_no_retrieval": "Não foi possível determinar com as evidências disponíveis. Nenhum trecho das "
+    "fontes fornecidas atingiu o limiar de similaridade ({threshold:.2f}) para esta afirmação.",
+    "cr_llm_failed": "A análise automática falhou para esta afirmação.",
+    "cr_downgraded": "[Reviewer2] A crítica original não apresentou citação verificável nas fontes; "
+    "por isso ela foi rebaixada.",
+    "cr_no_evidence_conclusion": "Sem evidência suficiente nas fontes fornecidas para julgar esta afirmação.",
+    "cr_transcript_note": "A transcrição deste trecho tem confiança {confidence:.2f} e pode conter "
+    "erros; considere isso antes de apontar um erro técnico.",
+    "dv_transcript_confidence": "Confiança da transcrição: {confidence:.2f}",
+    "dv_low": " (baixa)",
 }
 
 EN: Dict[str, str] = {
@@ -211,6 +223,18 @@ EN: Dict[str, str] = {
     "dv_no_evidence": "Absence of evidence stated explicitly; nothing to challenge.",
     "dv_failed": "Automatic verification failed; confidence was reduced as a precaution.",
     "dv_unsustained": "The critique did not hold up under the devil's advocate review.",
+    # Sentences written by the critique engine itself.
+    "cr_undetermined": "Could not be determined with the available evidence.",
+    "cr_no_retrieval": "Could not be determined with the available evidence. No excerpt from the "
+    "provided sources reached the similarity threshold ({threshold:.2f}) for this claim.",
+    "cr_llm_failed": "The automatic analysis failed for this claim.",
+    "cr_downgraded": "[Reviewer2] The original critique carried no verifiable quote from the "
+    "sources, so it was downgraded.",
+    "cr_no_evidence_conclusion": "Not enough evidence in the provided sources to judge this claim.",
+    "cr_transcript_note": "The transcript of this passage has confidence {confidence:.2f} and may "
+    "contain errors; consider that before reporting a technical error.",
+    "dv_transcript_confidence": "Transcript confidence: {confidence:.2f}",
+    "dv_low": " (low)",
 }
 
 

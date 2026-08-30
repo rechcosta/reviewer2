@@ -36,6 +36,7 @@ from ..models import (
     StatementType,
 )
 from ..prompts import SYSTEM_PROMPT, critique_prompt
+from ..reports.i18n import strings
 from ..retrieval import EvidenceRetriever
 from .confidence import calibrate
 from ..text_utils import split_sentences
@@ -43,7 +44,6 @@ from .markers import strip_accents
 
 logger = get_logger(__name__)
 
-NO_EVIDENCE_MESSAGE = "Não foi possível determinar com as evidências disponíveis."
 
 
 class CritiqueEngine:
@@ -53,6 +53,7 @@ class CritiqueEngine:
         self.llm = llm
         self.retriever = retriever
         self.config = config
+        self.strings = strings(config.report.language)
 
     # ------------------------------------------------------------------ #
     def review_claims(self, claims: Sequence[Claim]) -> List[Critique]:
@@ -102,7 +103,7 @@ class CritiqueEngine:
             claim.text,
             excerpts,
             claim_context=claim.context,
-            transcript_note=_transcript_note(claim),
+            transcript_note=_transcript_note(claim, self.strings),
             universal_markers=claim.universal_markers,
             causal_markers=claim.causal_markers,
             language=self.config.analysis.language,
@@ -111,7 +112,7 @@ class CritiqueEngine:
             raw = as_dict(self.llm.generate_json(prompt, system=SYSTEM_PROMPT, expect="object"))
         except LLMError as exc:
             logger.warning("Critique failed for %s: %s", claim.claim_id, exc.message)
-            return self._no_evidence(claim, trace, reason="A análise automática falhou para esta afirmação.")
+            return self._no_evidence(claim, trace, reason=self.strings["cr_llm_failed"])
 
         evidence = _build_evidence(
             raw.get("evidence"), sentences, scores, limit=self.config.retrieval.max_evidence_per_claim
@@ -133,8 +134,7 @@ class CritiqueEngine:
         if classification.is_problem and not verified:
             logger.debug("Downgrading %s: no verifiable quote in the critique", claim.claim_id)
             analysis = (
-                f"{analysis}\n\n[Reviewer2] A crítica original não apresentou citação verificável "
-                "nas fontes; por isso ela foi rebaixada."
+                f"{analysis}\n\n{self.strings['cr_downgraded']}"
             ).strip()
             classification = Classification.NOT_SUPPORTED
             severity = Severity.LOW
@@ -163,7 +163,7 @@ class CritiqueEngine:
             statement_type=statement_type,
             compatibility=compatibility,
             evidence=evidence,
-            analysis=analysis or NO_EVIDENCE_MESSAGE,
+            analysis=analysis or self.strings["cr_undetermined"],
             problem=problem,
             suggested_correction=str(raw.get("suggested_correction", "")).strip(),
             conclusion=str(raw.get("conclusion", "")).strip(),
@@ -217,10 +217,7 @@ class CritiqueEngine:
             trace=trace,
             evidence_status=EvidenceStatus.INSUFFICIENT,
         )
-        analysis = reason or (
-            f"{NO_EVIDENCE_MESSAGE} Nenhum trecho das fontes fornecidas atingiu o limiar de "
-            f"similaridade ({trace.threshold:.2f}) para esta afirmação."
-        )
+        analysis = reason or self.strings["cr_no_retrieval"].format(threshold=trace.threshold)
         return Critique(
             claim=claim,
             classification=Classification.NOT_SUPPORTED,
@@ -234,7 +231,7 @@ class CritiqueEngine:
             analysis=analysis,
             problem="",
             suggested_correction="",
-            conclusion="Sem evidência suficiente nas fontes fornecidas para julgar esta afirmação.",
+            conclusion=self.strings["cr_no_evidence_conclusion"],
             retrieval_trace=trace,
             confidence_factors=factors,
         )
@@ -391,13 +388,10 @@ def _query_for(claim: Claim) -> str:
     return f"{claim.text} {topic}".strip() if topic else claim.text
 
 
-def _transcript_note(claim: Claim) -> str:
+def _transcript_note(claim: Claim, text: Dict[str, str]) -> str:
     """Warn the model when the transcription of this claim is unreliable."""
     if claim.low_confidence_transcript:
-        return (
-            f"A transcrição deste trecho tem confiança {claim.transcript_confidence:.2f} "
-            "e pode conter erros; considere isso antes de apontar um erro técnico."
-        )
+        return text["cr_transcript_note"].format(confidence=claim.transcript_confidence)
     return ""
 
 

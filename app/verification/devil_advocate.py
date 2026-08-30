@@ -46,6 +46,7 @@ class DevilsAdvocate:
         self.config = config or VerificationConfig()
         self.concurrency = max(1, int(concurrency))
         self.strings = strings(language)
+        self.language = language
 
     def verify_all(self, critiques: Sequence[Critique]) -> List[Critique]:
         """Run the verification pass over every critique."""
@@ -90,9 +91,12 @@ class DevilsAdvocate:
             [item.quote for item in critique.evidence if item.verified and item.quote],
             source_texts,
             transcript_note=(
-                f"Confiança da transcrição: {critique.claim.transcript_confidence:.2f}"
-                + (" (baixa)" if critique.claim.low_confidence_transcript else "")
+                self.strings["dv_transcript_confidence"].format(
+                    confidence=critique.claim.transcript_confidence
+                )
+                + (self.strings["dv_low"] if critique.claim.low_confidence_transcript else "")
             ),
+            language=self.language,
         )
         try:
             raw = as_dict(self.llm.generate_json(prompt, system=SYSTEM_PROMPT, expect="object"))
