@@ -505,7 +505,7 @@ relatório existe fora do corpus indexado**.
 Distribuído sob a **Licença MIT**. Veja [LICENSE](LICENSE) para o texto completo.
 
 ```
-Copyright (c) 2026 Reviewer2 contributors
+Copyright (c) 2026 Gustavo Rech Costa
 
 Concede-se permissão, livre de encargos, a qualquer pessoa que obtenha uma cópia
 deste software e dos arquivos de documentação associados, para negociar no

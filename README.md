@@ -504,7 +504,7 @@ providers, the metrics and the web interface — plus an integration test assert
 Distributed under the **MIT License**. See [LICENSE](LICENSE) for the full text.
 
 ```
-Copyright (c) 2026 Reviewer2 contributors
+Copyright (c) 2026 Gustavo Rech Costa
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

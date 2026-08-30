@@ -9,7 +9,7 @@ description = "An independent, evidence-based AI technical reviewer for video ex
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Reviewer2 contributors" }]
+authors = [{ name = "Gustavo Rech Costa", email = "rechcostagustavo@gmail.com" }]
 keywords = ["rag", "llm", "whisper", "fact-checking", "technical-review", "ollama"]
 classifiers = [
     "Development Status :: 3 - Alpha",
