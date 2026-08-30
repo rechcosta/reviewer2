@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo.svg" width="96" alt="Reviewer2">
+
 # Reviewer2
 
 ### Revisor Técnico de Conteúdo com IA
@@ -7,6 +9,10 @@
 *Um segundo revisor independente para as explicações técnicas dos seus vídeos.*
 
 **[🇬🇧 Read in English](README.md)**
+
+<img src="assets/reviewer2-pipeline.gif" width="820" alt="Reviewer2 auditando uma aula: o pipeline rodando e o relatório apontando uma generalização indevida">
+
+<sub>O exemplo pronto para rodar em <code>examples/</code>, do início ao fim: sem modelo, sem rede, sem nenhum arquivo saindo da máquina.</sub>
 
 </div>
 

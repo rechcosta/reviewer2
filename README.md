@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo.svg" width="96" alt="Reviewer2">
+
 # Reviewer2
 
 ### AI Technical Content Reviewer
@@ -7,6 +9,10 @@
 *An independent second reviewer for the technical explanations in your videos.*
 
 **[🇧🇷 Leia em português](README.pt-BR.md)**
+
+<img src="assets/reviewer2-pipeline.gif" width="820" alt="Reviewer2 auditing a lecture: the pipeline running, then the report flagging an unsupported universal claim">
+
+<sub>The ready-to-run example in <code>examples/</code>, start to finish: no model, no network, no file leaving the machine.</sub>
 
 </div>
 
