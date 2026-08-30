@@ -58,7 +58,6 @@ class ClaimExtractor:
             except LLMError as exc:
                 # A failing window must not abort the whole review.
                 logger.warning("Claim extraction failed for window %d: %s", window.window_id, exc.message)
-            logger.info("Extracted claims from window %d/%d (%s)", position + 1, total, window.timestamp)
 
         if workers == 1 or total <= 1:
             for position in range(total):
@@ -66,6 +65,14 @@ class ClaimExtractor:
         else:
             with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="claims") as pool:
                 list(pool.map(work, range(total)))
+
+        # Logged after the join, in transcript order: workers finish out of
+        # order, and an out-of-order progress log reads like lost control.
+        for position, window in enumerate(windows):
+            logger.info(
+                "Extracted %d claim(s) from window %d/%d (%s)",
+                len(per_window[position]), position + 1, total, window.timestamp,
+            )
 
         claims = [claim for window_claims in per_window for claim in window_claims]
         deduped = _deduplicate(claims)
