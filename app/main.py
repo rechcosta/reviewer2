@@ -16,6 +16,7 @@ from .config import Config
 from .errors import Reviewer2Error
 from .logging_utils import get_logger, setup_logging
 from .pipeline import ReviewPipeline, build_pipeline
+from .reports import strings
 
 logger = get_logger(__name__)
 
@@ -161,21 +162,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print("\nInterrupted by the user.", file=sys.stderr)
         return 130
 
-    _print_summary(report)
+    _print_summary(report, config.report.language)
     return 0
 
 
-def _print_summary(report) -> None:
-    """Print a short human summary to stdout after a successful run."""
+def _print_summary(report, language: str = "pt") -> None:
+    """Print a short human summary to stdout after a successful run.
+
+    Defects and undetermined claims are counted separately, exactly as the
+    report does: "the sources do not cover this" is a limit of the reference
+    material, not a mistake by the author, and merging the two sends them
+    chasing problems that do not exist.
+    """
     stats = report.statistics
-    problems = report.problems
+    defects = report.defects
+    undetermined = report.undetermined
+
     print()
     print(f"Reviewer2 — {Path(report.video).name}")
-    print(f"  claims analysed : {stats.analysed_claims}/{stats.total_claims}")
-    print(f"  problems found  : {len(problems)}")
+    print(f"  verdict          : {report.quality.label(strings(language))}")
+    print(f"  claims analysed  : {stats.analysed_claims}/{stats.total_claims}")
+    print(f"  errors found     : {len(defects)}")
+    if undetermined:
+        print(f"  undetermined     : {len(undetermined)} (not covered by the sources)")
     print(f"  evidence coverage: {stats.evidence_coverage:.0%}")
     print(f"  dropped critiques: {stats.dropped_critiques}")
-    for critique in problems[:5]:
+    for critique in defects[:5]:
         text = " ".join(critique.claim.text.split())
         print(
             f"  - [{critique.claim.timestamp}] {critique.classification.value}"

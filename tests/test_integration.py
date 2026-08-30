@@ -9,6 +9,7 @@ the NumPy vector store.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -236,3 +237,32 @@ def test_full_pipeline_over_the_ollama_protocol(
         for evidence in critique.evidence:
             if evidence.verified:
                 assert " ".join(evidence.quote.split()) in corpus
+
+
+def test_console_summary_matches_the_report(
+    config: Config, transcript_file: Path, reference_file: Path, tmp_path: Path,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    """Regression: the console counted NAO_SUSTENTADA as an error, the report did not.
+
+    A number about the user's own work must not differ between the two
+    places they read it.
+    """
+    from app.main import main as cli_main
+
+    output = tmp_path / "r.md"
+    assert cli_main([
+        "--transcript", str(transcript_file), "--reference", str(reference_file),
+        "--offline", "--output", str(output), "--log-level", "ERROR",
+    ]) == 0
+
+    console = capsys.readouterr().out
+    markdown = output.read_text(encoding="utf-8")
+
+    errors = int(re.search(r"errors found\s+:\s+(\d+)", console).group(1))
+    reported = int(re.search(r"Erros encontrados: \*\*(\d+)\*\*", markdown).group(1))
+    assert errors == reported
+
+    if "undetermined" in console:
+        undetermined = int(re.search(r"undetermined\s+:\s+(\d+)", console).group(1))
+        assert f"não verificáveis com estas fontes: **{undetermined}**" in markdown
