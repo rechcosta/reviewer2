@@ -33,7 +33,7 @@
 ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white)
 
 ![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
-![pytest](https://img.shields.io/badge/pytest_·_196_tests-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/tested_with-pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
 
 </div>
 
@@ -47,7 +47,7 @@
 | 📄 **Documents** | PyMuPDF · pypdf · python-docx · BeautifulSoup | PDF, DOCX, HTML, Markdown, TXT, URLs |
 | ✅ **Validation** | Pydantic | end-to-end data contracts |
 | 🌐 **Web interface** | FastAPI · Uvicorn | upload and progress in the browser |
-| 🧪 **Tests** | pytest | 196 tests, offline, ~20 s |
+| 🧪 **Tests** | pytest | full offline suite, no model downloads |
 
 Everything runs **locally and for free**. No paid API is required and no file leaves your
 machine.
@@ -183,14 +183,18 @@ Checks FFmpeg, dependencies, the model server, RAM and disk, and says exactly wh
 about anything missing.
 
 ```
+Reviewer2 — environment check
+
   ✓ Python                             3.13.15
   ✓ FFmpeg                             /usr/bin/ffmpeg
-  ✓ faster-whisper                     transcrição de áudio
-  ✓ LLM (ollama/qwen2.5:7b-instruct)   respondendo em http://localhost:11434
-  ✓ Memória                            24 GB no total · o modelo precisa de ~7 GB
+  ✓ faster-whisper                     audio transcription
+  ✓ LLM (ollama/qwen2.5:7b-instruct)   responding at http://localhost:11434
+  ✓ Memory                             24 GB total · the configured model needs ~7 GB
 
-  Tudo pronto para revisar.
+  Ready to review.
 ```
+
+The check follows `report.language`, so `--report-language pt` prints it in Portuguese.
 
 The Whisper and embedding models download themselves on first use.
 
@@ -469,7 +473,7 @@ reviewer2/
 │   └── main.py          CLI
 ├── data/                videos, documents, transcripts, reports (git-ignored)
 ├── examples/            sample transcript, reference and gold standard
-└── tests/               196 tests: unit + end-to-end integration
+└── tests/               unit tests + end-to-end integration
 ```
 
 ### Swappable layers
@@ -494,7 +498,7 @@ returned and their scores. Any conclusion can be audited back to the query that 
 ### Tests
 
 ```bash
-pytest                     # 196 tests, offline, ~20 s
+pytest                     # the whole suite, offline, in seconds
 pytest --cov=app           # with coverage
 ```
 

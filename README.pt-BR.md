@@ -33,7 +33,7 @@
 ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white)
 
 ![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
-![pytest](https://img.shields.io/badge/pytest_·_196_testes-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/testado_com-pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
 
 </div>
 
@@ -47,7 +47,7 @@
 | 📄 **Documentos** | PyMuPDF · pypdf · python-docx · BeautifulSoup | PDF, DOCX, HTML, Markdown, TXT, URLs |
 | ✅ **Validação** | Pydantic | contratos de dados de ponta a ponta |
 | 🌐 **Interface web** | FastAPI · Uvicorn | envio dos arquivos e acompanhamento pelo navegador |
-| 🧪 **Testes** | pytest | 196 testes, offline, ~20 s |
+| 🧪 **Testes** | pytest | suíte completa offline, sem baixar modelos |
 
 Tudo roda **localmente e de graça**. Nenhuma API paga é necessária e nenhum arquivo sai da
 sua máquina.
@@ -183,6 +183,8 @@ Confere FFmpeg, dependências, servidor do modelo, RAM e disco, e diz exatamente
 em cada item que faltar.
 
 ```
+Reviewer2 — verificação do ambiente
+
   ✓ Python                             3.13.15
   ✓ FFmpeg                             /usr/bin/ffmpeg
   ✓ faster-whisper                     transcrição de áudio
@@ -469,7 +471,7 @@ reviewer2/
 │   └── main.py          CLI
 ├── data/                vídeos, documentos, transcrições, relatórios (fora do git)
 ├── examples/            transcrição, referência e gabarito de exemplo
-└── tests/               196 testes: unitários + integração ponta a ponta
+└── tests/               testes unitários + integração ponta a ponta
 ```
 
 ### Camadas substituíveis
@@ -495,7 +497,7 @@ que a produziu.
 ### Testes
 
 ```bash
-pytest                     # 196 testes, offline, ~20 s
+pytest                     # a suíte inteira, offline, em segundos
 pytest --cov=app           # com cobertura
 ```
 
