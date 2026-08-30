@@ -24,7 +24,7 @@ from app.models import (
     Transcript,
     TranscriptSegment,
 )
-from app.reports import ReportGenerator, build_statistics
+from app.reports import ReportGenerator, build_statistics, strings
 
 SECTION_TITLES_PT = [
     "1. Resumo Executivo",
@@ -203,3 +203,52 @@ def test_long_quotes_are_truncated_explicitly() -> None:
     report.critiques[0].evidence[0].verified = True
     markdown = ReportGenerator(ReportConfig(max_evidence_quote_chars=100)).render(report)
     assert "[…]" in markdown
+
+
+# --------------------------------------------------------------------------- #
+# Language: nothing user-facing may leak Portuguese into an English report
+# --------------------------------------------------------------------------- #
+def test_english_report_has_no_portuguese_prose() -> None:
+    """Regression: the verdict, its advice and the limitations were hardcoded.
+
+    Classification/severity/confidence tokens stay in Portuguese by design —
+    they are the canonical vocabulary documented in both READMEs — but every
+    sentence written for the reader must follow the report language.
+    """
+    report = _report()
+    report.limitations = [
+        strings("en")["lim_sources_only"],
+        strings("en")["lim_coverage"].format(ratio=0.25),
+    ]
+    markdown = ReportGenerator(ReportConfig(language="en")).render(report)
+
+    assert "MINOR_FIXES" in markdown or "READY_TO_PUBLISH" in markdown
+    for portuguese in (
+        "Sem erros graves", "Pode publicar", "Há erro que compromete",
+        "A análise considera apenas", "não puderam ser acompanhadas",
+        "Nenhum item identificado", "Erros encontrados",
+    ):
+        assert portuguese not in markdown, f"vazou português: {portuguese!r}"
+
+
+def test_verdict_label_and_advice_follow_the_language() -> None:
+    from app.models import QualityVerdict
+
+    pt, en = strings("pt"), strings("en")
+    verdict = QualityVerdict.NEEDS_RERECORDING
+    assert verdict.label(pt) == "REGRAVAR_TRECHO"
+    assert verdict.label(en) == "RERECORD_SEGMENT"
+    assert "regravar" in verdict.advice(pt).lower()
+    assert "re-record" in verdict.advice(en).lower()
+
+
+def test_defects_exclude_undetermined_claims() -> None:
+    """NAO_SUSTENTADA is a limit of the sources, never an error by the author."""
+    report = _report()
+    report.critiques[1].classification = Classification.NOT_SUPPORTED
+    report.critiques[1].evidence = []
+
+    assert len(report.problems) == 2          # both count as "not correct"
+    assert len(report.defects) == 1           # but only one is an actual error
+    assert len(report.undetermined) == 1
+    assert report.defects[0].claim.claim_id == "claim_001"

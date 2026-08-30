@@ -574,21 +574,13 @@ class QualityVerdict(str, Enum):
     NEEDS_CORRECTION = "PRECISA_CORRECAO"
     NEEDS_RERECORDING = "REGRAVAR_TRECHO"
 
-    @property
-    def advice(self) -> str:
-        """One line telling the author what to do next."""
-        return {
-            QualityVerdict.PUBLISHABLE:
-                "Nenhum erro técnico sustentado por evidência. Pode publicar.",
-            QualityVerdict.MINOR_FIXES:
-                "Sem erros graves. Considere ajustar a formulação dos pontos abaixo, "
-                "ou mencioná-los na descrição do vídeo.",
-            QualityVerdict.NEEDS_CORRECTION:
-                "Há afirmações que podem levar a compreensão técnica incorreta. "
-                "Corrija-as com uma errata ou uma anotação no vídeo.",
-            QualityVerdict.NEEDS_RERECORDING:
-                "Há erro que compromete a explicação. Recomenda-se regravar o trecho indicado.",
-        }[self]
+    def label(self, strings: Dict[str, str]) -> str:
+        """The verdict token in the report's language."""
+        return strings.get(f"verdict_{self.value}", self.value)
+
+    def advice(self, strings: Dict[str, str]) -> str:
+        """One line telling the author what to do next, in the report's language."""
+        return strings.get(f"advice_{self.value}", "")
 
 
 class ReviewStatistics(BaseModel):

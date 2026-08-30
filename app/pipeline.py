@@ -20,7 +20,7 @@ from .errors import Reviewer2Error
 from .llm import HeuristicProvider, LLMProvider, build_llm
 from .logging_utils import get_logger
 from .models import Claim, Critique, ReviewReport, Transcript
-from .reports import ReportGenerator, build_statistics
+from .reports import ReportGenerator, build_statistics, strings
 from .retrieval import EvidenceRetriever
 from .transcription import load_transcript, transcribe_media
 from .verification import DevilsAdvocate
@@ -82,7 +82,6 @@ class ReviewPipeline:
         self._on_stage = on_stage
 
         self._stage(0)
-        logger.info("Loading video")
         transcript = self._transcribe(video, transcript_path, force_transcription)
 
         self._stage(1)
@@ -100,7 +99,10 @@ class ReviewPipeline:
         self._stage(4)
         logger.info("Running verification")
         critiques = DevilsAdvocate(
-            self.llm, self.config.verification, concurrency=self.config.llm.concurrency
+            self.llm,
+            self.config.verification,
+            concurrency=self.config.llm.concurrency,
+            language=self.config.report.language,
         ).verify_all(critiques)
 
         contradictions = []
@@ -163,13 +165,15 @@ class ReviewPipeline:
     ) -> Transcript:
         """Transcribe the media, or load a transcript supplied by the user."""
         if transcript_path is not None and Path(transcript_path).exists() and not force:
+            # No media to load: announcing a stage that is about to be skipped
+            # only confuses the reader of the log.
             logger.info("Using the transcript provided: %s", transcript_path)
             transcript = load_transcript(Path(transcript_path))
             if not transcript.source:
                 transcript.source = str(video)
             return transcript
 
-        logger.info("Extracting audio")
+        logger.info("Loading video")
         return transcribe_media(
             Path(video), self.config, force=force, transcript_path=transcript_path
         )
@@ -208,43 +212,29 @@ class ReviewPipeline:
         return Path(self.config.paths.reports_dir) / f"{stem}{self.config.report.filename_suffix}.md"
 
     def _limitations(self, report: ReviewReport) -> List[str]:
-        """State plainly what could weaken this analysis."""
+        """State plainly what could weaken this analysis, in the report language."""
+        text = strings(self.config.report.language)
         limitations = list(self.limitations)
-        limitations.append(
-            "A análise considera apenas os materiais de referência fornecidos; "
-            "afirmações fora do escopo dessas fontes não podem ser verificadas."
-        )
+        limitations.append(text["lim_sources_only"])
+
         if isinstance(self.llm, HeuristicProvider):
-            limitations.append(
-                "Execução em modo heurístico offline (sem modelo de linguagem): as classificações "
-                "seguem regras lexicais simples e devem ser tratadas como indicativas, não conclusivas."
-            )
+            limitations.append(text["lim_heuristic"])
         if isinstance(self.retriever.embeddings, HashingEmbeddings):
-            limitations.append(
-                "Embeddings lexicais (hashing) foram usados no lugar de embeddings semânticos: "
-                "a recuperação pode falhar quando vídeo e fontes usam vocabulário ou idiomas diferentes."
-            )
+            limitations.append(text["lim_hashing"])
         if report.transcript is not None:
             ratio = report.transcript.low_confidence_ratio
             if ratio > 0.1:
-                limitations.append(
-                    f"{ratio:.0%} dos segmentos da transcrição têm baixa confiança; "
-                    "erros de transcrição podem ter sido interpretados como erros técnicos."
-                )
+                limitations.append(text["lim_low_confidence"].format(ratio=ratio))
         if report.statistics.evidence_coverage < 1.0:
             limitations.append(
-                f"{1 - report.statistics.evidence_coverage:.0%} das críticas não puderam ser "
-                "acompanhadas de citação verificável e foram rebaixadas."
+                text["lim_coverage"].format(ratio=1 - report.statistics.evidence_coverage)
             )
         not_supported = report.statistics.by_classification.get("NAO_SUSTENTADA", 0)
         if not_supported:
-            limitations.append(
-                f"{not_supported} afirmação(ões) não puderam ser determinadas com as evidências disponíveis."
-            )
+            limitations.append(text["lim_not_supported"].format(count=not_supported))
         if report.statistics.dropped_critiques:
             limitations.append(
-                f"{report.statistics.dropped_critiques} crítica(s) foram descartadas na verificação "
-                "por não se sustentarem — elas não aparecem no relatório."
+                text["lim_dropped"].format(count=report.statistics.dropped_critiques)
             )
         return limitations
 

@@ -78,6 +78,34 @@ PT: Dict[str, str] = {
     "verdict_problems": "Foram identificados {count} problema(s) sustentado(s) por evidência verificável.",
     "no_problems": "Nenhum problema sustentado por evidência foi identificado.",
     "audit_note": "Rastro completo de recuperação salvo em",
+    # Quality verdict: label and the advice shown to the author.
+    "verdict_PODE_PUBLICAR": "PODE_PUBLICAR",
+    "verdict_AJUSTES_MENORES": "AJUSTES_MENORES",
+    "verdict_PRECISA_CORRECAO": "PRECISA_CORRECAO",
+    "verdict_REGRAVAR_TRECHO": "REGRAVAR_TRECHO",
+    "advice_PODE_PUBLICAR": "Nenhum erro técnico sustentado por evidência. Pode publicar.",
+    "advice_AJUSTES_MENORES": "Sem erros graves. Considere ajustar a formulação dos pontos abaixo, "
+    "ou mencioná-los na descrição do vídeo.",
+    "advice_PRECISA_CORRECAO": "Há afirmações que podem levar a compreensão técnica incorreta. "
+    "Corrija-as com uma errata ou uma anotação no vídeo.",
+    "advice_REGRAVAR_TRECHO": "Há erro que compromete a explicação. Recomenda-se regravar o trecho indicado.",
+    # Limitations and verification notes written by the pipeline.
+    "lim_sources_only": "A análise considera apenas os materiais de referência fornecidos; "
+    "afirmações fora do escopo dessas fontes não podem ser verificadas.",
+    "lim_heuristic": "Execução em modo heurístico offline (sem modelo de linguagem): as classificações "
+    "seguem regras lexicais simples e devem ser tratadas como indicativas, não conclusivas.",
+    "lim_hashing": "Embeddings lexicais (hashing) foram usados no lugar de embeddings semânticos: "
+    "a recuperação pode falhar quando vídeo e fontes usam vocabulário ou idiomas diferentes.",
+    "lim_low_confidence": "{ratio:.0%} dos segmentos da transcrição têm baixa confiança; "
+    "erros de transcrição podem ter sido interpretados como erros técnicos.",
+    "lim_coverage": "{ratio:.0%} das críticas não puderam ser acompanhadas de citação verificável "
+    "e foram rebaixadas.",
+    "lim_not_supported": "{count} afirmação(ões) não puderam ser determinadas com as evidências disponíveis.",
+    "lim_dropped": "{count} crítica(s) foram descartadas na verificação por não se sustentarem — "
+    "elas não aparecem no relatório.",
+    "dv_no_evidence": "Ausência de evidência declarada explicitamente; nada a rebater.",
+    "dv_failed": "A verificação automática falhou; a confiança foi reduzida por precaução.",
+    "dv_unsustained": "A crítica não se sustentou na revisão do advogado do diabo.",
 }
 
 EN: Dict[str, str] = {
@@ -154,6 +182,35 @@ EN: Dict[str, str] = {
     "verdict_problems": "{count} problem(s) supported by verifiable evidence were identified.",
     "no_problems": "No evidence-supported problem was identified.",
     "audit_note": "Full retrieval trace saved to",
+    # Quality verdict: label and the advice shown to the author.
+    "verdict_PODE_PUBLICAR": "READY_TO_PUBLISH",
+    "verdict_AJUSTES_MENORES": "MINOR_FIXES",
+    "verdict_PRECISA_CORRECAO": "NEEDS_CORRECTION",
+    "verdict_REGRAVAR_TRECHO": "RERECORD_SEGMENT",
+    "advice_PODE_PUBLICAR": "No technical error supported by evidence. Ready to publish.",
+    "advice_AJUSTES_MENORES": "No serious errors. Consider rewording the points below, "
+    "or mentioning them in the video description.",
+    "advice_PRECISA_CORRECAO": "Some claims could lead to incorrect technical understanding. "
+    "Correct them with an erratum or an on-screen note.",
+    "advice_REGRAVAR_TRECHO": "There is an error that compromises the explanation. "
+    "Re-recording the indicated segment is recommended.",
+    # Limitations and verification notes written by the pipeline.
+    "lim_sources_only": "The analysis considers only the reference material provided; claims "
+    "outside the scope of those sources cannot be verified.",
+    "lim_heuristic": "Run in offline heuristic mode (no language model): the classifications follow "
+    "simple lexical rules and should be treated as indicative, not conclusive.",
+    "lim_hashing": "Lexical (hashing) embeddings were used instead of semantic ones: retrieval may "
+    "fail when the video and the sources use different vocabulary or languages.",
+    "lim_low_confidence": "{ratio:.0%} of the transcript segments have low confidence; "
+    "transcription errors may have been read as technical errors.",
+    "lim_coverage": "{ratio:.0%} of the critiques could not be backed by a verifiable quote "
+    "and were downgraded.",
+    "lim_not_supported": "{count} claim(s) could not be determined with the available evidence.",
+    "lim_dropped": "{count} critique(s) were dropped during verification because they did not hold up — "
+    "they do not appear in this report.",
+    "dv_no_evidence": "Absence of evidence stated explicitly; nothing to challenge.",
+    "dv_failed": "Automatic verification failed; confidence was reduced as a precaution.",
+    "dv_unsustained": "The critique did not hold up under the devil's advocate review.",
 }
 
 

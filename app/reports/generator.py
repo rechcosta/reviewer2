@@ -93,9 +93,9 @@ class ReportGenerator:
         lines = [
             f"## {s['s1']}",
             "",
-            f"### {s['verdict']}: `{verdict.value}`",
+            f"### {s['verdict']}: `{verdict.label(s)}`",
             "",
-            verdict.advice,
+            verdict.advice(s),
             "",
         ]
 
@@ -424,7 +424,10 @@ class ReportGenerator:
         defects = report.defects
         verdict = report.quality
 
-        lines = [f"## {s['s12']}", "", f"**{s['verdict']}: `{verdict.value}`** — {verdict.advice}", ""]
+        lines = [
+            f"## {s['s12']}", "",
+            f"**{s['verdict']}: `{verdict.label(s)}`** — {verdict.advice(s)}", "",
+        ]
         if defects:
             for severity in (Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW):
                 count = sum(1 for c in defects if c.severity is severity)

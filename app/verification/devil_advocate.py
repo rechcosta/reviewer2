@@ -25,6 +25,7 @@ from ..models import (
     parse_optional,
 )
 from ..prompts import SYSTEM_PROMPT, devil_advocate_prompt
+from ..reports.i18n import strings
 from ..analysis.confidence import apply_adjustment
 
 logger = get_logger(__name__)
@@ -39,10 +40,12 @@ class DevilsAdvocate:
         config: Optional[VerificationConfig] = None,
         *,
         concurrency: int = 1,
+        language: str = "pt",
     ) -> None:
         self.llm = llm
         self.config = config or VerificationConfig()
         self.concurrency = max(1, int(concurrency))
+        self.strings = strings(language)
 
     def verify_all(self, critiques: Sequence[Critique]) -> List[Critique]:
         """Run the verification pass over every critique."""
@@ -74,7 +77,7 @@ class DevilsAdvocate:
             # "No evidence" is already the humble verdict; nothing to attack.
             critique.verification = VerificationResult(
                 sustained=True,
-                notes="Ausência de evidência declarada explicitamente; nada a rebater.",
+                notes=self.strings["dv_no_evidence"],
             )
             return critique
 
@@ -98,7 +101,7 @@ class DevilsAdvocate:
             # A failed verification must not silently promote an unchecked critique.
             critique.verification = VerificationResult(
                 sustained=True,
-                notes="A verificação automática falhou; a confiança foi reduzida por precaução.",
+                notes=self.strings["dv_failed"],
                 confidence_adjustment=-0.1,
             )
             critique.confidence, critique.confidence_score = apply_adjustment(
@@ -139,7 +142,7 @@ class DevilsAdvocate:
             if baseless and self.config.drop_unsustained:
                 critique.dropped = True
                 critique.dropped_reason = (
-                    result.notes or "A crítica não se sustentou na revisão do advogado do diabo."
+                    result.notes or self.strings["dv_unsustained"]
                 )
                 logger.debug("Dropped critique for %s: %s", critique.claim.claim_id, critique.dropped_reason)
                 return critique
