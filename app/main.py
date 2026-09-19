@@ -16,7 +16,7 @@ from .config import Config
 from .errors import Reviewer2Error
 from .logging_utils import get_logger, setup_logging
 from .pipeline import ReviewPipeline, build_pipeline
-from .reports import strings
+from .reports import strings, token
 
 logger = get_logger(__name__)
 
@@ -174,13 +174,14 @@ def _print_summary(report, language: str = "pt") -> None:
     material, not a mistake by the author, and merging the two sends them
     chasing problems that do not exist.
     """
+    s = strings(language)
     stats = report.statistics
     defects = report.defects
     undetermined = report.undetermined
 
     print()
     print(f"Reviewer2 — {Path(report.video).name}")
-    print(f"  verdict          : {report.quality.label(strings(language))}")
+    print(f"  verdict          : {report.quality.label(s)}")
     print(f"  claims analysed  : {stats.analysed_claims}/{stats.total_claims}")
     print(f"  errors found     : {len(defects)}")
     if undetermined:
@@ -190,8 +191,8 @@ def _print_summary(report, language: str = "pt") -> None:
     for critique in defects[:5]:
         text = " ".join(critique.claim.text.split())
         print(
-            f"  - [{critique.claim.timestamp}] {critique.classification.value}"
-            f"/{critique.severity.value}: {text[:88]}"
+            f"  - [{critique.claim.timestamp}] {token(critique.classification.value, s)}"
+            f"/{token(critique.severity.value, s)}: {text[:88]}"
         )
 
 

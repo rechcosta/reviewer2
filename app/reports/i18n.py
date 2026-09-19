@@ -235,9 +235,45 @@ EN: Dict[str, str] = {
     "contain errors; consider that before reporting a technical error.",
     "dv_transcript_confidence": "Transcript confidence: {confidence:.2f}",
     "dv_low": " (low)",
+    # Enum values are the data contract (LLM JSON, audit trail): they stay in
+    # Portuguese on the wire and are translated only where they are printed.
+    "token_CORRETA": "CORRECT",
+    "token_PARCIALMENTE_CORRETA": "PARTIALLY_CORRECT",
+    "token_INCORRETA": "INCORRECT",
+    "token_IMPRECISA": "IMPRECISE",
+    "token_CONTRADITORIA": "CONTRADICTORY",
+    "token_NAO_SUSTENTADA": "NOT_SUPPORTED",
+    "token_SIMPLIFICACAO_PEDAGOGICA": "PEDAGOGICAL_SIMPLIFICATION",
+    "token_CRITICO": "CRITICAL",
+    "token_ALTO": "HIGH",
+    "token_MEDIO": "MEDIUM",
+    "token_BAIXO": "LOW",
+    "token_PEDAGOGICO": "PEDAGOGICAL",
+    "token_MUITO_ALTA": "VERY_HIGH",
+    "token_ALTA": "HIGH",
+    "token_MEDIA": "MEDIUM",
+    "token_BAIXA": "LOW",
+    "token_FATO": "FACT",
+    "token_INFERENCIA": "INFERENCE",
+    "token_INTERPRETACAO": "INTERPRETATION",
+    "token_OPINIAO": "OPINION",
+    "token_SIM": "YES",
+    "token_NAO": "NO",
+    "token_PARCIAL": "PARTIAL",
+    "token_INDETERMINADO": "UNDETERMINED",
 }
 
 
 def strings(language: str) -> Dict[str, str]:
     """Return the string table for ``language`` (defaults to Portuguese)."""
     return EN if str(language).lower().startswith("en") else PT
+
+
+def token(value: str, strings: Dict[str, str]) -> str:
+    """Render an enum value in the report's language.
+
+    The values themselves are the data contract — the model answers with them
+    and the audit JSON stores them — so only what reaches the page changes.
+    A value without a translation is printed as it is.
+    """
+    return strings.get(f"token_{value}", value)

@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.config import Config  # noqa: E402
 from app.web import create_app  # noqa: E402
-from app.web.jobs import JobManager, JobStatus  # noqa: E402
+from app.web.jobs import JobManager, JobStatus, stages  # noqa: E402
 
 
 @pytest.fixture
@@ -161,3 +161,33 @@ def test_job_manager_records_progress_and_summary(
     payload = job.to_dict()
     assert payload["status"] == "done"
     assert payload["stage_count"] == 6
+
+
+def test_interface_follows_the_report_language(config: Config) -> None:
+    """An English report language serves an English page and English stages."""
+    config.report.language = "en"
+    client = TestClient(create_app(config, offline=True))
+
+    page = client.get("/").text
+    assert '<html lang="en">' in page
+    assert "Reference material" in page
+    assert "Review</button>" in page
+    assert "Materiais de referência" not in page
+
+    assert stages("en")[0] == "transcription"
+
+
+def test_errors_follow_the_report_language(config: Config, tmp_path: Path) -> None:
+    """The messages the page shows are translated too."""
+    config.report.language = "en"
+    client = TestClient(create_app(config, offline=True))
+
+    video = tmp_path / "lecture.mp4"
+    video.write_bytes(b"fake")
+    response = client.post(
+        "/api/reviews", files={"video": ("lecture.mp4", video.read_bytes(), "video/mp4")}
+    )
+    assert response.status_code == 400
+    assert "reference material is required" in response.json()["detail"]
+
+    assert client.get("/api/reviews/nope").json()["detail"] == "Job not found."

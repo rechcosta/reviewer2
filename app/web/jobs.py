@@ -25,6 +25,7 @@ from ..errors import Reviewer2Error
 from ..logging_utils import get_logger
 from ..models import ReviewReport
 from ..pipeline import STAGES as PIPELINE_STAGES, build_pipeline
+from .i18n import ui_strings
 
 logger = get_logger(__name__)
 
@@ -38,18 +39,14 @@ class JobStatus(str, Enum):
     FAILED = "failed"
 
 
-#: Human labels for the pipeline stages, in the pipeline's own order.
-STAGE_LABELS: Dict[str, str] = {
-    "transcription": "transcrição",
-    "indexing": "indexação das referências",
-    "claims": "extração de afirmações",
-    "critique": "recuperação e crítica",
-    "verification": "verificação",
-    "report": "relatório",
-}
+def stages(language: str) -> List[str]:
+    """The stage labels in the pipeline's own order — the progress bar walks this list."""
+    strings = ui_strings(language)
+    return [strings[f"stage_{name}"] for name in PIPELINE_STAGES]
 
-#: The stage labels, in order — the web UI's progress bar walks this list.
-STAGES: List[str] = [STAGE_LABELS[name] for name in PIPELINE_STAGES]
+
+#: Labels for a job built without a configured language (tests, direct use).
+DEFAULT_STAGES: List[str] = stages("pt")
 
 
 @dataclass
@@ -68,6 +65,7 @@ class Job:
     error: Optional[str] = None
     summary: Dict[str, Any] = field(default_factory=dict)
     log: List[str] = field(default_factory=list)
+    stages: List[str] = field(default_factory=lambda: list(DEFAULT_STAGES))
 
     def to_dict(self) -> Dict[str, Any]:
         """JSON-serialisable view used by the API."""
@@ -78,7 +76,7 @@ class Job:
             "status": self.status.value,
             "stage": self.stage,
             "stage_index": self.stage_index,
-            "stage_count": len(STAGES),
+            "stage_count": len(self.stages),
             "created_at": self.created_at,
             "elapsed": round((self.finished_at or time.time()) - self.created_at, 1),
             "report_path": self.report_path,
@@ -93,6 +91,8 @@ class JobManager:
 
     def __init__(self, config: Config, *, max_workers: int = 1) -> None:
         self.config = config
+        self._strings = ui_strings(config.report.language)
+        self._stages = stages(config.report.language)
         self._jobs: Dict[str, Job] = {}
         self._lock = threading.Lock()
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="reviewer2")
@@ -100,7 +100,12 @@ class JobManager:
     # ------------------------------------------------------------------ #
     def submit(self, video: str, references: List[str], *, offline: bool = False) -> Job:
         """Queue a review and return its job record immediately."""
-        job = Job(job_id=uuid.uuid4().hex[:12], video=str(video), references=[str(r) for r in references])
+        job = Job(
+            job_id=uuid.uuid4().hex[:12],
+            video=str(video),
+            references=[str(r) for r in references],
+            stages=self._stages,
+        )
         with self._lock:
             self._jobs[job.job_id] = job
         self._executor.submit(self._run, job, offline)
@@ -164,21 +169,21 @@ class JobManager:
                 "embedding_model": report.embedding_model,
             }
             job.status = JobStatus.DONE
-            self._advance(job, len(STAGES))
+            self._advance(job, len(self._stages))
         except Reviewer2Error as exc:
             job.status = JobStatus.FAILED
             job.error = exc.format()
             logger.error("Job %s failed: %s", job.job_id, exc.message)
         except Exception as exc:  # pragma: no cover - unexpected failures
             job.status = JobStatus.FAILED
-            job.error = f"Erro inesperado: {exc}"
+            job.error = self._strings["err_unexpected"].format(error=exc)
             logger.exception("Job %s crashed", job.job_id)
         finally:
             job.finished_at = time.time()
 
     def _advance(self, job: Job, index: int) -> None:
-        job.stage_index = min(index, len(STAGES))
-        job.stage = STAGES[min(index, len(STAGES) - 1)]
+        job.stage_index = min(index, len(job.stages))
+        job.stage = job.stages[min(index, len(job.stages) - 1)]
 
 
 class _JobLogHandler(logging.Handler):

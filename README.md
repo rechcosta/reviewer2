@@ -276,15 +276,15 @@ reasoning**.
 > A memória cache é uma memória não volátil que fica dentro do processador.
 
 **Classification:**
-`INCORRETA`
+`INCORRECT`
 
 **Severity:**
-`CRITICO`
+`CRITICAL`
 
 **Confidence:**
-`ALTA` (0.78)
+`HIGH` (0.78)
 
-**Nature of the assessment:** `FATO` · **Compatibility with the sources:** `NAO` · **Evidence status:** `OK`
+**Nature of the assessment:** `FACT` · **Compatibility with the sources:** `NO` · **Evidence status:** `OK`
 
 **Evidence:**
 

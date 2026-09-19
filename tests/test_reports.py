@@ -24,7 +24,7 @@ from app.models import (
     Transcript,
     TranscriptSegment,
 )
-from app.reports import ReportGenerator, build_statistics, strings
+from app.reports import ReportGenerator, build_statistics, strings, token
 
 SECTION_TITLES_PT = [
     "1. Resumo Executivo",
@@ -211,9 +211,9 @@ def test_long_quotes_are_truncated_explicitly() -> None:
 def test_english_report_has_no_portuguese_prose() -> None:
     """Regression: the verdict, its advice and the limitations were hardcoded.
 
-    Classification/severity/confidence tokens stay in Portuguese by design —
-    they are the canonical vocabulary documented in both READMEs — but every
-    sentence written for the reader must follow the report language.
+    Every sentence written for the reader follows the report language, and so
+    do the classification/severity/confidence tokens where they are printed —
+    the Portuguese values stay the canonical vocabulary on the wire.
     """
     report = _report()
     report.limitations = [
@@ -285,3 +285,21 @@ def test_english_readme_example_uses_english_field_labels() -> None:
         assert label in sample, f"faltou {label} no exemplo do README inglês"
     for portuguese_label in ("**Afirmação:**", "**Classificação:**", "**Gravidade:**"):
         assert portuguese_label not in sample, f"rótulo em português no exemplo inglês: {portuguese_label}"
+
+
+def test_enum_tokens_follow_the_report_language() -> None:
+    """The printed tokens are translated; the values on the wire are not."""
+    from app.models import Classification
+
+    report = _report()
+    english = ReportGenerator(ReportConfig(language="en")).render(report)
+    portuguese = ReportGenerator(ReportConfig(language="pt")).render(report)
+
+    assert "`CORRECT`" in english
+    assert "`CORRETA`" not in english
+    assert "`CORRETA`" in portuguese
+
+    # The value itself is the data contract the model answers with.
+    assert Classification.CORRECT.value == "CORRETA"
+    assert token("CORRETA", strings("en")) == "CORRECT"
+    assert token("CORRETA", strings("pt")) == "CORRETA"

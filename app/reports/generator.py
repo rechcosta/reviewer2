@@ -24,7 +24,7 @@ from ..models import (
     Severity,
 )
 from ..analysis.omissions import collect_omissions
-from .i18n import strings
+from .i18n import strings, token
 
 logger = get_logger(__name__)
 
@@ -105,8 +105,8 @@ class ReportGenerator:
             for critique in defects[:8]:
                 lines.append(
                     f"- **[{critique.claim.timestamp}]** {_one_line(critique.claim.text)}"
-                    f"  \n  `{critique.classification.value}` · `{critique.severity.value}`"
-                    f" · {s['confidence'].lower()} `{critique.confidence.value}`"
+                    f"  \n  `{token(critique.classification.value, s)}` · `{token(critique.severity.value, s)}`"
+                    f" · {s['confidence'].lower()} `{token(critique.confidence.value, s)}`"
                 )
             if len(defects) > 8:
                 lines.append(f"- … {len(defects) - 8} more")
@@ -165,9 +165,9 @@ class ReportGenerator:
             f"| {s['transcript_confidence']} | {stats.mean_transcript_confidence:.2f} |",
             "",
         ]
-        lines += _histogram(f"**{s['by_classification']}**", stats.by_classification)
-        lines += _histogram(f"**{s['by_severity']}**", stats.by_severity)
-        lines += _histogram(f"**{s['by_confidence']}**", stats.by_confidence)
+        lines += _histogram(f"**{s['by_classification']}**", stats.by_classification, s)
+        lines += _histogram(f"**{s['by_severity']}**", stats.by_severity, s)
+        lines += _histogram(f"**{s['by_confidence']}**", stats.by_confidence, s)
         return lines
 
     def _main_problems(self, report: ReviewReport) -> List[str]:
@@ -179,7 +179,7 @@ class ReportGenerator:
         for critique in problems:
             lines.append(
                 f"- **{critique.claim.claim_id}** [{critique.claim.timestamp}] "
-                f"`{critique.severity.value}` — {_one_line(critique.problem or critique.conclusion)}"
+                f"`{token(critique.severity.value, s)}` — {_one_line(critique.problem or critique.conclusion)}"
             )
         lines.append("")
         return lines
@@ -208,17 +208,17 @@ class ReportGenerator:
             f"> {_one_line(claim.text)}",
             "",
             f"**{s['classification']}:**",
-            f"`{critique.classification.value}`",
+            f"`{token(critique.classification.value, s)}`",
             "",
             f"**{s['severity']}:**",
-            f"`{critique.severity.value}`",
+            f"`{token(critique.severity.value, s)}`",
             "",
             f"**{s['confidence']}:**",
-            f"`{critique.confidence.value}` ({critique.confidence_score:.2f})",
+            f"`{token(critique.confidence.value, s)}` ({critique.confidence_score:.2f})",
             "",
-            f"**{s['statement_type']}:** `{critique.statement_type.value}` · "
-            f"**{s['compatibility']}:** `{critique.compatibility.value}` · "
-            f"**{s['evidence_status']}:** `{critique.evidence_status.value}`",
+            f"**{s['statement_type']}:** `{token(critique.statement_type.value, s)}` · "
+            f"**{s['compatibility']}:** `{token(critique.compatibility.value, s)}` · "
+            f"**{s['evidence_status']}:** `{token(critique.evidence_status.value, s)}`",
             "",
             f"**{s['evidence']}:**",
             "",
@@ -308,8 +308,8 @@ class ReportGenerator:
             "",
             f"**{s['explanation']}:** {item.explanation or '—'}",
             "",
-            f"**{s['severity']}:** `{item.severity.value}` · "
-            f"**{s['confidence']}:** `{item.confidence.value}` · "
+            f"**{s['severity']}:** `{token(item.severity.value, s)}` · "
+            f"**{s['confidence']}:** `{token(item.confidence.value, s)}` · "
             f"**{s['similarity']}:** {item.similarity:.2f}",
             "",
             "---",
@@ -332,8 +332,8 @@ class ReportGenerator:
                 "",
                 f"> {_one_line(critique.claim.text)}",
                 "",
-                f"**{s['classification']}:** `{critique.classification.value}` · "
-                f"**{s['compatibility']}:** `{critique.compatibility.value}`",
+                f"**{s['classification']}:** `{token(critique.classification.value, s)}` · "
+                f"**{s['compatibility']}:** `{token(critique.compatibility.value, s)}`",
                 "",
             ]
             lines += self._evidence_block(critique.evidence)
@@ -352,7 +352,7 @@ class ReportGenerator:
             )
             timestamp = critique.claim.timestamp if critique else "—"
             lines += [
-                f"### {omission.claim_id} [{timestamp}] — `{omission.impact.value}`",
+                f"### {omission.claim_id} [{timestamp}] — `{token(omission.impact.value, s)}`",
                 "",
                 f"**{s['missing']}:** {omission.missing_information}",
                 "",
@@ -432,7 +432,7 @@ class ReportGenerator:
             for severity in (Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW):
                 count = sum(1 for c in defects if c.severity is severity)
                 if count:
-                    lines.append(f"- `{severity.value}`: {count}")
+                    lines.append(f"- `{token(severity.value, s)}`: {count}")
             lines.append(f"- {s['evidence_coverage']}: {stats.evidence_coverage:.0%}")
         if report.undetermined:
             lines.append(f"- {s['undetermined_count']}: {len(report.undetermined)}")
@@ -496,12 +496,13 @@ def build_statistics(report: ReviewReport) -> ReviewStatistics:
     )
 
 
-def _histogram(title: str, counts: Dict[str, int]) -> List[str]:
+def _histogram(title: str, counts: Dict[str, int], strings: Dict[str, str]) -> List[str]:
+    """Render one distribution; the counts are keyed by the values on the wire."""
     if not counts:
         return []
     lines = [title, ""]
     for key, value in sorted(counts.items(), key=lambda item: -item[1]):
-        lines.append(f"- `{key}`: {value}")
+        lines.append(f"- `{token(key, strings)}`: {value}")
     lines.append("")
     return lines
 

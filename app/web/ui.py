@@ -1,11 +1,16 @@
 """The single-page HTML served by the web interface."""
 
-INDEX_HTML = """<!doctype html>
-<html lang="pt-BR">
+from __future__ import annotations
+
+from .i18n import ui_strings
+
+#: The page, with ``{{key}}`` markers filled in by :func:`index_html`.
+INDEX_TEMPLATE = """<!doctype html>
+<html lang="{{html_lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reviewer2</title>
+<title>{{title}}</title>
 <style>
   :root { color-scheme: light dark; --bg:#faf9f7; --fg:#1a1a1a; --muted:#6b6b6b;
           --line:#e2e0dc; --card:#fff; --accent:#2f6f4f; --warn:#9a4a1e; }
@@ -20,8 +25,17 @@ INDEX_HTML = """<!doctype html>
   main { max-width:900px; margin:0 auto; padding:24px; display:grid; gap:20px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:20px; }
   label { display:block; font-weight:600; margin-bottom:6px; font-size:13px; }
-  input[type=file], textarea { width:100%; padding:9px; border:1px solid var(--line); border-radius:7px;
+  textarea { width:100%; padding:9px; border:1px solid var(--line); border-radius:7px;
         background:transparent; color:inherit; font:inherit; }
+  /* The native file input renders its button in the browser's own language;
+     a custom control keeps the page in the language it was rendered for. */
+  .file { display:flex; align-items:center; gap:12px; width:100%; padding:8px 9px;
+          border:1px solid var(--line); border-radius:7px; }
+  .file input[type=file] { position:absolute; width:1px; height:1px; opacity:0; }
+  .file span[role=button] { background:var(--line); color:inherit; border-radius:6px;
+          padding:5px 12px; font-size:13px; white-space:nowrap; cursor:pointer; }
+  .file input:focus-visible + span[role=button] { outline:2px solid var(--accent); outline-offset:2px; }
+  .file .name { color:var(--muted); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   textarea { min-height:64px; resize:vertical; }
   .field { margin-bottom:16px; }
   .hint { color:var(--muted); font-size:12px; margin-top:4px; }
@@ -44,38 +58,46 @@ INDEX_HTML = """<!doctype html>
 </head>
 <body>
 <header>
-  <h1>Reviewer2</h1>
-  <p>Revisor técnico independente — cada crítica é ancorada em uma citação verificável das fontes.</p>
+  <h1>{{title}}</h1>
+  <p>{{tagline}}</p>
 </header>
 <main>
   <section class="card">
-    <div class="row" style="margin-bottom:14px"><span id="health" class="pill">verificando backends…</span></div>
+    <div class="row" style="margin-bottom:14px"><span id="health" class="pill">{{checking_backends}}</span></div>
     <form id="form">
       <div class="field">
-        <label for="video">Vídeo ou áudio</label>
-        <input type="file" id="video" name="video" accept="video/*,audio/*" required>
-        <div class="hint">mp4, mkv, mov, webm, mp3, wav…</div>
+        <label for="video">{{video_label}}</label>
+        <label class="file" for="video">
+          <input type="file" id="video" name="video" accept="video/*,audio/*" required>
+          <span role="button">{{choose_file}}</span>
+          <span class="name" id="videoName">{{no_file}}</span>
+        </label>
+        <div class="hint">{{video_hint}}</div>
       </div>
       <div class="field">
-        <label for="references">Materiais de referência</label>
-        <input type="file" id="references" name="references" multiple accept=".pdf,.txt,.md,.docx,.html">
-        <div class="hint">PDF, TXT, Markdown, DOCX, HTML — pode selecionar vários</div>
+        <label for="references">{{references_label}}</label>
+        <label class="file" for="references">
+          <input type="file" id="references" name="references" multiple accept=".pdf,.txt,.md,.docx,.html">
+          <span role="button">{{choose_files}}</span>
+          <span class="name" id="referencesName">{{no_file}}</span>
+        </label>
+        <div class="hint">{{references_hint}}</div>
       </div>
       <div class="field">
-        <label for="urls">URLs de referência (uma por linha)</label>
+        <label for="urls">{{urls_label}}</label>
         <textarea id="urls" name="reference_urls" placeholder="https://…"></textarea>
       </div>
       <div class="row">
-        <button type="submit" id="submit">Revisar</button>
+        <button type="submit" id="submit">{{submit}}</button>
         <label style="font-weight:400;font-size:13px;display:flex;gap:6px;align-items:center;margin:0">
-          <input type="checkbox" id="offline" name="offline_mode"> modo offline (sem LLM, execução seca)
+          <input type="checkbox" id="offline" name="offline_mode"> {{offline_label}}
         </label>
       </div>
     </form>
   </section>
 
   <section class="card" id="progress" hidden>
-    <div class="row"><strong id="stage">na fila…</strong><span class="status" id="elapsed"></span></div>
+    <div class="row"><strong id="stage">{{queued}}</strong><span class="status" id="elapsed"></span></div>
     <div class="bar"><div id="fill" style="width:0%"></div></div>
     <div class="status" id="loglines"></div>
     <div class="err" id="error" hidden></div>
@@ -84,7 +106,7 @@ INDEX_HTML = """<!doctype html>
 
   <section class="card" id="reportCard" hidden>
     <div class="row" style="justify-content:space-between;margin-bottom:12px">
-      <strong>Relatório</strong><a id="download" download="review.md">baixar .md</a>
+      <strong>{{report_heading}}</strong><a id="download" download="{{download_filename}}">{{download}}</a>
     </div>
     <pre id="report"></pre>
   </section>
@@ -98,9 +120,18 @@ let settled = false;
 
 fetch('/api/health').then(r => r.json()).then(h => {
   const on = Object.entries(h.backends).filter(([,v]) => v).map(([k]) => k);
-  const llm = h.llm.reachable ? `LLM: ${h.llm.model}` : `LLM indisponível (${h.llm.provider})`;
-  $('health').textContent = `${llm} · backends: ${on.join(', ') || 'nenhum opcional'}`;
-}).catch(() => { $('health').textContent = 'servidor sem resposta'; });
+  const llm = h.llm.reachable ? `LLM: ${h.llm.model}` : `{{llm_unavailable}} (${h.llm.provider})`;
+  $('health').textContent = `${llm} · backends: ${on.join(', ') || '{{no_optional_backends}}'}`;
+}).catch(() => { $('health').textContent = '{{server_silent}}'; });
+
+for (const [input, target] of [['video','videoName'], ['references','referencesName']]) {
+  $(input).addEventListener('change', () => {
+    const files = $(input).files;
+    $(target).textContent = files.length === 0 ? '{{no_file}}'
+      : files.length === 1 ? files[0].name
+      : `{{n_files}}`.replace('{count}', files.length);
+  });
+}
 
 $('form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -117,7 +148,7 @@ $('form').addEventListener('submit', async e => {
 
   const res = await fetch('/api/reviews', { method: 'POST', body: data });
   const job = await res.json();
-  if (!res.ok) { fail(job.detail || 'falha ao enviar'); return; }
+  if (!res.ok) { fail(job.detail || '{{submit_failed}}'); return; }
   timer = setInterval(() => poll(job.job_id), 1500);
   poll(job.job_id);
 });
@@ -125,7 +156,7 @@ $('form').addEventListener('submit', async e => {
 async function poll(id) {
   const job = await (await fetch('/api/reviews/' + id)).json();
   if (settled) return;
-  $('stage').textContent = job.status === 'done' ? 'concluído' : job.stage;
+  $('stage').textContent = job.status === 'done' ? '{{done}}' : job.stage;
   $('elapsed').textContent = job.elapsed + 's';
   $('fill').style.width = Math.round(100 * job.stage_index / job.stage_count) + '%';
   $('loglines').textContent = (job.log || []).slice(-3).join(' · ');
@@ -139,10 +170,10 @@ async function poll(id) {
   const s = job.summary || {};
   $('stats').hidden = false;
   $('stats').innerHTML = `
-    <div><b>${s.analysed ?? 0}</b>afirmações analisadas</div>
-    <div><b>${s.problems ?? 0}</b>problemas</div>
-    <div><b>${Math.round(100 * (s.evidence_coverage ?? 0))}%</b>cobertura de evidência</div>
-    <div><b>${s.dropped ?? 0}</b>críticas descartadas</div>`;
+    <div><b>${s.analysed ?? 0}</b>{{stat_analysed}}</div>
+    <div><b>${s.problems ?? 0}</b>{{stat_problems}}</div>
+    <div><b>${Math.round(100 * (s.evidence_coverage ?? 0))}%</b>{{stat_coverage}}</div>
+    <div><b>${s.dropped ?? 0}</b>{{stat_dropped}}</div>`;
 
   const md = await (await fetch(`/api/reviews/${id}/report`)).text();
   $('report').textContent = md;
@@ -160,3 +191,11 @@ function fail(message) {
 </script>
 </body>
 </html>"""
+
+
+def index_html(language: str = "pt") -> str:
+    """Render the interface in ``language``."""
+    page = INDEX_TEMPLATE
+    for key, value in ui_strings(language).items():
+        page = page.replace("{{" + key + "}}", value)
+    return page
