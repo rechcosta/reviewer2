@@ -35,7 +35,9 @@ class _OllamaStub(BaseHTTPRequestHandler):
 def ollama(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
     _OllamaStub.installed = ["qwen2.5:7b-instruct"]
     httpd = HTTPServer(("127.0.0.1", 0), _OllamaStub)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    threading.Thread(
+        target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    ).start()
     try:
         yield f"http://127.0.0.1:{httpd.server_port}"
     finally:

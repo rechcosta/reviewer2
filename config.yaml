@@ -56,11 +56,24 @@ llm:
   base_url: http://localhost:11434
   temperature: 0.1          # low: this is an audit, not creative writing
   top_p: 0.9
-  max_tokens: 3072          # headroom: a full critique uses ~1000 tokens
+  # Caps the answer, and with it the worst case: a model that starts looping
+  # burns this whole budget, and generate_json may then spend max_retries more
+  # on repairs (so the ceiling per claim is max_tokens x (1 + max_retries)).
+  # Measured over 49 real calls: largest answer 412 tokens, median ~220. 1536
+  # leaves ~3.7x headroom for a richer corpus while keeping a runaway call to
+  # minutes instead of tens of minutes. Raise it if answers start truncating —
+  # a truncated JSON costs a repair call, which is slower than not capping.
+  max_tokens: 1536
   num_ctx: 8192             # context window; the main RAM driver after the model
   timeout: 600              # CPU inference can take minutes per call
   max_retries: 2
-  concurrency: 2            # simultaneous model calls; 2 measured ~2.7x throughput on CPU
+  # Simultaneous model calls. On CPU, leave this at 1: two slots share the same
+  # cores instead of doubling them. Measured end to end on the bundled example
+  # (qwen2.5:7b-instruct, 12-core CPU, cold cache, OLLAMA_NUM_PARALLEL=2):
+  # 1465 s at concurrency 1 vs 1442 s at 2 — 1.02x, for a doubled KV cache.
+  # Raise it for a GPU, or for a remote endpoint where the calls do not compete
+  # for the same silicon. See the Performance section of the README.
+  concurrency: 1
   cache: true               # reuse identical model calls: a re-run costs almost nothing
   fallback_to_heuristic: false   # true = degrade to the offline engine instead of failing
 
@@ -68,6 +81,7 @@ analysis:
   window_max_seconds: 45.0
   window_max_chars: 1200
   window_pause_seconds: 1.4
+  window_min_chars: 400     # a pause only ends a window once it carries this much text
   max_claims_per_window: 6
   min_claim_chars: 15
   detect_omissions: true

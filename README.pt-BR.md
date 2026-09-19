@@ -324,8 +324,9 @@ llm:
   base_url: http://localhost:11434
   temperature: 0.1          # baixo: isto é auditoria, não escrita criativa
   num_ctx: 8192             # contexto; principal fator de RAM depois do modelo
-  max_tokens: 3072
-  concurrency: 2            # chamadas simultâneas (ver Desempenho)
+  max_tokens: 1536          # limita a resposta e, com ela, o pior caso: o
+                            # máximo medido foi 412 tokens em 49 chamadas
+  concurrency: 1            # >1 compensa em GPU, não em CPU (ver Desempenho)
   fallback_to_heuristic: false   # false = falha explícita, nunca uma revisão falsa
 
 retrieval:
@@ -377,13 +378,51 @@ class LLMProvider(abc.ABC):
 
 O tempo é dominado pela geração de tokens do modelo — em CPU, **~47 s por chamada** com o
 `qwen2.5:7b-instruct` (6,3 tok/s), sendo ~85% disso geração e apenas ~15% leitura do prompt.
-Três ajustes já vêm ligados:
+Quatro ajustes já vêm ligados:
 
 | Ajuste | Efeito medido |
 |---|---|
-| `llm.concurrency: 2` | 2 chamadas simultâneas rendem **2,7×** mais que 1; com 3 a vazão cai |
+| `llm.concurrency: 1` | o padrão, porque **2 rende ~1,0× em CPU** (veja abaixo); aumente só em GPU ou endpoint remoto |
 | `llm.cache: true` | **medido: 2060 s → 28 s** ao repetir uma revisão; execução interrompida retoma de onde parou |
+| `analysis.window_min_chars: 400` | uma pausa só encerra a janela quando ela já carrega esse tanto de texto; no exemplo do repositório isso transforma 7 chamadas de extração em 3 |
 | `max_contradiction_pairs: 10` | cada par comparado é uma chamada |
+
+> **Por que `concurrency` não compensa em CPU.** Duas coisas precisam ser verdade
+> para render, e a segunda não é.
+>
+> Primeiro, o servidor precisa permitir: o Ollama vem com `OLLAMA_NUM_PARALLEL=1` e
+> simplesmente enfileira a segunda chamada, então `llm.concurrency: 2` não faz nada
+> de fábrica (medido: 0,99×). Aumentar exige um drop-in no serviço:
+>
+> ```bash
+> sudo mkdir -p /etc/systemd/system/ollama.service.d
+> sudo tee /etc/systemd/system/ollama.service.d/parallel.conf >/dev/null <<'EOF'
+> [Service]
+> Environment="OLLAMA_NUM_PARALLEL=2"
+> EOF
+> sudo systemctl daemon-reload && sudo systemctl restart ollama
+> ```
+>
+> Segundo — e é isto que mata a ideia — dois slots numa CPU não somam. Com os prompts
+> reais de ~1700 tokens que este pipeline envia, a vazão agregada sobe só **1,21×**
+> (4,14 → 5,03 tok/s), porque a geração por slot despenca de 5,75 para 3,46 tok/s: os
+> núcleos são divididos, não duplicados. Num prompt de brinquedo de 20 tokens a mesma
+> medição dá 1,45× — por isso é fácil superestimar. Meça com os seus tamanhos de
+> prompt, não com um comando de uma linha.
+>
+> Ponta a ponta é ainda pior, porque cada etapa espera a anterior terminar e a cauda
+> de cada uma deixa um slot ocioso. Revisão completa do exemplo do repositório, cache
+> frio, máquina ociosa, 26 chamadas nos dois casos:
+>
+> | | tempo total |
+> |---|---|
+> | `concurrency: 1` | 1465 s |
+> | `concurrency: 2` + `OLLAMA_NUM_PARALLEL=2` | 1442 s (**1,02×**) |
+>
+> Por esses 2% você ainda paga RAM: o Ollama aloca `num_ctx x OLLAMA_NUM_PARALLEL`
+> (observado como `llama-server -c 16384` para `num_ctx: 8192`), então o cache KV
+> dobra. Em CPU, deixe os dois em 1. O ajuste se paga em GPU, ou contra um endpoint
+> remoto onde as chamadas não disputam o mesmo silício.
 
 Um vídeo de 10 minutos (~40 afirmações) gera cerca de **77 chamadas**, o que dá **50 a 60
 minutos** na primeira execução. Reprocessar depois custa segundos.

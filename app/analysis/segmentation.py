@@ -48,8 +48,14 @@ def build_windows(transcript: Transcript, config: Optional[AnalysisConfig] = Non
             length = sum(len(s.text) for s in buffer)
             duration = buffer[-1].end - buffer[0].start
             ends_sentence = buffer[-1].text.strip().endswith((".", "!", "?"))
+            # A pause only ends a window once the window carries enough text to
+            # be worth a model call of its own. Speakers pause between ordinary
+            # sentences all the time, and splitting on every one of them turns a
+            # short lecture into a dozen calls whose prompts are almost entirely
+            # instructions — the same claims, several times the CPU time.
+            long_enough = length >= config.window_min_chars
             if (
-                (pause >= config.window_pause_seconds and ends_sentence)
+                (pause >= config.window_pause_seconds and ends_sentence and long_enough)
                 or length >= config.window_max_chars
                 or duration >= config.window_max_seconds
             ):

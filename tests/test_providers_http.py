@@ -52,7 +52,9 @@ def server() -> Iterator[str]:
     """Start the stub server on a free port and yield its base URL."""
     _Handler.received = {}
     httpd = HTTPServer(("127.0.0.1", 0), _Handler)
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    # poll_interval also bounds how long shutdown() blocks; the default of
+    # 0.5s is paid by every test that uses the fixture.
+    thread = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield f"http://127.0.0.1:{httpd.server_port}"

@@ -98,12 +98,12 @@ class LLMConfig(BaseModel):
     api_key: Optional[str] = None
     temperature: float = 0.1
     top_p: float = 0.9
-    max_tokens: int = 3072
+    max_tokens: int = 1536
     timeout: int = 600
     num_ctx: int = 8192
     max_retries: int = 2
     fallback_to_heuristic: bool = False
-    concurrency: int = 2      # simultaneous model calls; batching raises CPU throughput
+    concurrency: int = 1      # simultaneous model calls; >1 pays off on GPU, not CPU
     cache: bool = True        # reuse identical model calls across runs
 
 
@@ -113,6 +113,7 @@ class AnalysisConfig(BaseModel):
     window_max_seconds: float = 45.0
     window_max_chars: int = 1200
     window_pause_seconds: float = 1.4
+    window_min_chars: int = 400
     max_claims_per_window: int = 6
     min_claim_chars: int = 15
     detect_omissions: bool = True

@@ -42,14 +42,42 @@ def test_windows_group_segments(transcript: Transcript) -> None:
     assert all(window.text for window in windows)
 
 
-def test_windows_split_on_long_pause() -> None:
+SENTENCE = "Uma frase tecnica de tamanho realista sobre o funcionamento do processador."
+
+
+def _paused_transcript(count: int) -> Transcript:
+    """``count`` back-to-back sentences, then a 15 s pause, then one more."""
     segments = [
-        TranscriptSegment(segment_id=0, start=0, end=5, text="Primeira ideia.", confidence=1.0),
-        TranscriptSegment(segment_id=1, start=20, end=25, text="Segunda ideia.", confidence=1.0),
+        TranscriptSegment(
+            segment_id=i, start=float(i), end=i + 1.0, text=SENTENCE, confidence=1.0
+        )
+        for i in range(count)
     ]
-    transcript = Transcript(source="x", segments=segments)
-    windows = build_windows(transcript, AnalysisConfig(window_pause_seconds=1.0))
+    segments.append(
+        TranscriptSegment(
+            segment_id=count, start=count + 15.0, end=count + 16.0, text=SENTENCE, confidence=1.0
+        )
+    )
+    return Transcript(source="x", segments=segments)
+
+
+def test_windows_split_on_long_pause_once_the_window_carries_enough_text() -> None:
+    config = AnalysisConfig(window_pause_seconds=1.0, window_min_chars=200)
+    windows = build_windows(_paused_transcript(4), config)
     assert len(windows) == 2
+    assert windows[1].segment_ids == [4]
+
+
+def test_a_pause_does_not_split_a_window_that_is_still_short() -> None:
+    """Speakers pause between ordinary sentences; each pause is not a window.
+
+    Splitting on every one of them costs a model call per sentence, and each
+    of those prompts is almost entirely boilerplate instructions.
+    """
+    config = AnalysisConfig(window_pause_seconds=1.0, window_min_chars=400)
+    windows = build_windows(_paused_transcript(2), config)
+    assert len(windows) == 1
+    assert windows[0].segment_ids == [0, 1, 2]
 
 
 def test_windows_respect_max_chars() -> None:
