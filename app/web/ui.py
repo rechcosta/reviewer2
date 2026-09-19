@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import html
+import json
+from functools import lru_cache
+
 from .i18n import ui_strings
 
 #: The page, with ``{{key}}`` markers filled in by :func:`index_html`.
@@ -29,8 +33,8 @@ INDEX_TEMPLATE = """<!doctype html>
         background:transparent; color:inherit; font:inherit; }
   /* The native file input renders its button in the browser's own language;
      a custom control keeps the page in the language it was rendered for. */
-  .file { display:flex; align-items:center; gap:12px; width:100%; padding:8px 9px;
-          border:1px solid var(--line); border-radius:7px; }
+  .file { position:relative; display:flex; align-items:center; gap:12px; width:100%;
+          padding:8px 9px; border:1px solid var(--line); border-radius:7px; }
   .file input[type=file] { position:absolute; width:1px; height:1px; opacity:0; }
   .file span[role=button] { background:var(--line); color:inherit; border-radius:6px;
           padding:5px 12px; font-size:13px; white-space:nowrap; cursor:pointer; }
@@ -112,6 +116,7 @@ INDEX_TEMPLATE = """<!doctype html>
   </section>
 </main>
 <script>
+const T = {{__strings_json__}};
 const $ = id => document.getElementById(id);
 let timer = null;
 // A poll started before the job finished can resolve after it: without this
@@ -120,16 +125,16 @@ let settled = false;
 
 fetch('/api/health').then(r => r.json()).then(h => {
   const on = Object.entries(h.backends).filter(([,v]) => v).map(([k]) => k);
-  const llm = h.llm.reachable ? `LLM: ${h.llm.model}` : `{{llm_unavailable}} (${h.llm.provider})`;
-  $('health').textContent = `${llm} · backends: ${on.join(', ') || '{{no_optional_backends}}'}`;
-}).catch(() => { $('health').textContent = '{{server_silent}}'; });
+  const llm = h.llm.reachable ? `LLM: ${h.llm.model}` : `${T.llm_unavailable} (${h.llm.provider})`;
+  $('health').textContent = `${llm} · backends: ${on.join(', ') || T.no_optional_backends}`;
+}).catch(() => { $('health').textContent = T.server_silent; });
 
 for (const [input, target] of [['video','videoName'], ['references','referencesName']]) {
   $(input).addEventListener('change', () => {
     const files = $(input).files;
-    $(target).textContent = files.length === 0 ? '{{no_file}}'
+    $(target).textContent = files.length === 0 ? T.no_file
       : files.length === 1 ? files[0].name
-      : `{{n_files}}`.replace('{count}', files.length);
+      : T.n_files.replace('{count}', files.length);
   });
 }
 
@@ -148,7 +153,7 @@ $('form').addEventListener('submit', async e => {
 
   const res = await fetch('/api/reviews', { method: 'POST', body: data });
   const job = await res.json();
-  if (!res.ok) { fail(job.detail || '{{submit_failed}}'); return; }
+  if (!res.ok) { fail(job.detail || T.submit_failed); return; }
   timer = setInterval(() => poll(job.job_id), 1500);
   poll(job.job_id);
 });
@@ -156,7 +161,7 @@ $('form').addEventListener('submit', async e => {
 async function poll(id) {
   const job = await (await fetch('/api/reviews/' + id)).json();
   if (settled) return;
-  $('stage').textContent = job.status === 'done' ? '{{done}}' : job.stage;
+  $('stage').textContent = job.status === 'done' ? T.done : job.stage;
   $('elapsed').textContent = job.elapsed + 's';
   $('fill').style.width = Math.round(100 * job.stage_index / job.stage_count) + '%';
   $('loglines').textContent = (job.log || []).slice(-3).join(' · ');
@@ -170,10 +175,10 @@ async function poll(id) {
   const s = job.summary || {};
   $('stats').hidden = false;
   $('stats').innerHTML = `
-    <div><b>${s.analysed ?? 0}</b>{{stat_analysed}}</div>
-    <div><b>${s.problems ?? 0}</b>{{stat_problems}}</div>
-    <div><b>${Math.round(100 * (s.evidence_coverage ?? 0))}%</b>{{stat_coverage}}</div>
-    <div><b>${s.dropped ?? 0}</b>{{stat_dropped}}</div>`;
+    <div><b>${s.analysed ?? 0}</b>${T.stat_analysed}</div>
+    <div><b>${s.problems ?? 0}</b>${T.stat_problems}</div>
+    <div><b>${Math.round(100 * (s.evidence_coverage ?? 0))}%</b>${T.stat_coverage}</div>
+    <div><b>${s.dropped ?? 0}</b>${T.stat_dropped}</div>`;
 
   const md = await (await fetch(`/api/reviews/${id}/report`)).text();
   $('report').textContent = md;
@@ -193,9 +198,24 @@ function fail(message) {
 </html>"""
 
 
+@lru_cache(maxsize=4)
 def index_html(language: str = "pt") -> str:
-    """Render the interface in ``language``."""
-    page = INDEX_TEMPLATE
-    for key, value in ui_strings(language).items():
-        page = page.replace("{{" + key + "}}", value)
+    """Render the interface in ``language``.
+
+    The page's own script reads its text from ``T``, a JSON object rendered
+    once, instead of having each string pasted into a JavaScript literal.
+    Pasted literals cannot survive an apostrophe — a single "don't" or
+    "d'água" in a translation closes the string early and the SyntaxError
+    kills the whole script, while the HTML still renders, so the page looks
+    right and does nothing at all.
+
+    Cached: the page is a constant per language, and every GET / otherwise
+    re-ran one full pass over ~9 KB of HTML for each of the ~45 markers.
+    """
+    strings = ui_strings(language)
+    # "</" is escaped so that a string can never close the <script> element.
+    table = json.dumps(strings, ensure_ascii=False).replace("</", "<\\/")
+    page = INDEX_TEMPLATE.replace("{{__strings_json__}}", table)
+    for key, value in strings.items():
+        page = page.replace("{{" + key + "}}", html.escape(value))
     return page

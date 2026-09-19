@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import threading
 from pathlib import Path
 from typing import List, Optional
 
@@ -112,7 +114,10 @@ class CachingProvider(LLMProvider):
         path = self.directory / f"{key}.txt"
         try:
             # Written atomically so an interrupted run leaves no half file.
-            temporary = path.with_suffix(".tmp")
+            # The temporary name carries the thread id: with llm.concurrency
+            # above one, two workers can be writing the same key at the same
+            # moment, and a shared scratch file would interleave their bytes.
+            temporary = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
             temporary.write_text(answer, encoding="utf-8")
             temporary.replace(path)
         except OSError as exc:

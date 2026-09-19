@@ -81,7 +81,14 @@ class CritiqueEngine:
 
         def work(position: int) -> None:
             claim = claims[position]
-            results[position] = self.review_claim(claim)
+            try:
+                results[position] = self.review_claim(claim)
+            except Exception:
+                # One claim that blows up must not throw away the critiques of
+                # every other claim — on CPU those cost minutes each. The claim
+                # is dropped from the report, which the coverage statistic and
+                # the limitations section already account for.
+                logger.exception("Review failed for claim %s; it is left out", claim.claim_id)
             logger.info("Reviewed claim %d/%d (%s)", next(done), total, claim.claim_id)
 
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="critique") as pool:

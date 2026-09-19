@@ -128,7 +128,12 @@ class EvidenceRetriever:
         """Write every retrieval trace as JSON for offline auditing."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        payload = [trace.model_dump(mode="json") for trace in self.traces]
+        # Claim order, not completion order: with llm.concurrency above one the
+        # critiques finish out of order, and an audit trail that reshuffles
+        # itself between two identical runs is a poor audit trail. The ids are
+        # zero-padded, so sorting them lexicographically sorts them numerically.
+        ordered = sorted(self.traces, key=lambda trace: trace.claim_id or "")
+        payload = [trace.model_dump(mode="json") for trace in ordered]
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return path
 
@@ -146,6 +151,27 @@ def _lexical_overlap(query: str, text: str) -> float:
     return len(query_tokens & tokens(text)) / len(query_tokens)
 
 
+def _fingerprint(reference: Path) -> str:
+    """A value that changes whenever ``reference`` changes on disk.
+
+    A directory needs its files walked, not its own mtime: editing a document
+    inside a directory leaves the directory's mtime untouched, so keying on it
+    served the previous index and quietly audited the lecture against the
+    reference material the author had just finished correcting.
+    """
+    if not reference.exists():
+        return "url"
+    if reference.is_dir():
+        entries = sorted(
+            f"{p.relative_to(reference)}:{p.stat().st_mtime}:{p.stat().st_size}"
+            for p in reference.rglob("*")
+            if p.is_file()
+        )
+        return "|".join(entries)
+    stat = reference.stat()
+    return f"{stat.st_mtime}:{stat.st_size}"
+
+
 def _corpus_key(references: Sequence[str], config: Config) -> str:
     """Stable cache key: references + chunking + embedding settings."""
     material = json.dumps(
@@ -154,9 +180,7 @@ def _corpus_key(references: Sequence[str], config: Config) -> str:
             "chunk_size": config.documents.chunk_size,
             "chunk_overlap": config.documents.chunk_overlap,
             "embeddings": f"{config.embeddings.backend}:{config.embeddings.model}",
-            "mtimes": [
-                str(Path(r).stat().st_mtime) if Path(r).exists() else "url" for r in sorted(map(str, references))
-            ],
+            "mtimes": [_fingerprint(Path(r)) for r in sorted(map(str, references))],
         },
         sort_keys=True,
     )

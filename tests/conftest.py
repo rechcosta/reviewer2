@@ -8,6 +8,7 @@ network call is made.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -43,6 +44,26 @@ TRANSCRIPT_SEGMENTS = [
     (36.0, 46.0, "Os dados da cache são perdidos quando o computador é desligado.", 0.92),
     (48.0, 58.0, "O prefetching reduz a latência de acesso à memória.", 0.94),
 ]
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _isolate_project_config(tmp_path_factory: pytest.TempPathFactory):
+    """Keep the developer's own config.yaml out of the suite.
+
+    ``Config.load`` picks up ./config.yaml even with ``use_env=False``, so
+    without this every test inherits whatever the working copy happens to
+    configure — flipping ``report.language`` to ``en`` in config.yaml alone
+    used to fail ten tests that have nothing to do with it.
+    """
+    empty = tmp_path_factory.mktemp("config") / "empty.yaml"
+    empty.write_text("{}\n", encoding="utf-8")
+    previous = os.environ.get("REVIEWER2_CONFIG")
+    os.environ["REVIEWER2_CONFIG"] = str(empty)
+    yield
+    if previous is None:
+        os.environ.pop("REVIEWER2_CONFIG", None)
+    else:
+        os.environ["REVIEWER2_CONFIG"] = previous
 
 
 @pytest.fixture

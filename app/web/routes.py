@@ -8,7 +8,8 @@ It is imported only from :func:`app.web.api.create_app`, after the FastAPI
 dependency has been checked, so FastAPI stays optional for CLI users.
 """
 
-import shutil
+import hashlib
+import uuid
 from pathlib import Path
 from typing import Dict, List
 
@@ -143,10 +144,48 @@ def _store_upload(
             ),
         )
     directory.mkdir(parents=True, exist_ok=True)
-    destination = directory / filename
-    with destination.open("wb") as handle:
-        shutil.copyfileobj(upload.file, handle)
-    return destination
+    return _store_without_clobbering(upload, directory, filename)
+
+
+def _store_without_clobbering(upload: UploadFile, directory: Path, filename: str) -> Path:
+    """Write the upload under ``filename``, never overwriting different content.
+
+    Two people uploading their own ``aula.mp4`` used to land on the same path,
+    so the second upload replaced the file a queued or running review was
+    still reading. The content is hashed on the way in: an identical re-upload
+    keeps the original name (and with it the reuse of the reference index),
+    and anything else gets its own name.
+    """
+    digest = hashlib.sha256()
+    scratch = directory / f".incoming-{uuid.uuid4().hex[:12]}"
+    try:
+        with scratch.open("wb") as handle:
+            for block in iter(lambda: upload.file.read(1024 * 1024), b""):
+                digest.update(block)
+                handle.write(block)
+
+        destination = directory / filename
+        if not destination.exists():
+            scratch.replace(destination)
+            return destination
+        if _sha256_of(destination) == digest.hexdigest():
+            return destination  # byte-for-byte the same upload; keep the original
+
+        stem, suffix = Path(filename).stem, Path(filename).suffix
+        destination = directory / f"{stem}_{digest.hexdigest()[:8]}{suffix}"
+        if not destination.exists():
+            scratch.replace(destination)
+        return destination
+    finally:
+        scratch.unlink(missing_ok=True)
+
+
+def _sha256_of(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _llm_reachable(config: Config) -> bool:
